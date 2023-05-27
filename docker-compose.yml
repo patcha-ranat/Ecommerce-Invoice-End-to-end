@@ -1,0 +1,57 @@
+version: '3'
+
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: postgres
+    container_name: ${POSTGRES_CONTAINER}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - ${POSTGRES_PORT}:${POSTGRES_PORT}
+    restart: unless-stopped
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio-container
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - 9000:9000
+      - 9001:9001
+    volumes:
+      - minio-data-volume:/data
+    restart: always
+    command: server /data --console-address ":9001"
+
+    # airflow:
+    #   # command: webserver
+    #   image: apache/airflow:latest
+    #   container_name: airflow-container
+    #   # restart: always
+    #   environment:
+    #     AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+    #   ports:
+    #     - 8080:8080
+    #   volumes:
+    #     - ./dags:/opt/airflow/dags
+    #     - ./logs:/opt/airflow/logs
+    #     - ./plugins:/opt/airflow/plugins
+
+    # mailhog:
+    #   image: mailhog/mailhog
+    #   container_name: mailhog-container
+    #   ports:
+    #     - 1025:1025
+    #     - 8025:8025
+
+volumes:
+  pgdata:
+  minio-data-volume:
