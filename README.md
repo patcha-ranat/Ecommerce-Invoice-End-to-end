@@ -1,7 +1,12 @@
 # Development Note
 End-to-end fullstack data project practice.
 
-tools:
+Prerequisite:
+- docker installed
+- postgresql installed (just in case)
+- `requirements.txt` not yet uploaded (waiting for the next process of writing DAGs)
+
+Tools:
 - Postgres Database in Docker
     - source
     - data warehouse
@@ -21,12 +26,16 @@ tools:
 
 ## 1. Set up Postgres source (docker compose)
 ---
+Firstly, clone this repository to obtain all neccessary files, then use it as working directory.
+```bash
+git clone https://github.com/Patcharanat/ecommerce-invoice
+```
+
 ### **Step 1**
-Run with docker compose
+Run with docker compose to execute bash command in `Dockerfile`.
 ```bash
 docker compose build
 ```
-To execute bash command in `Dockerfile`.
 - Copying csv file (`cleaned_data.csv`) to docker container's local
 - Copying sql file (`setup.sql`) to `docker-entrypoint-initdb.d` to be executed when we initialize container.
 
@@ -38,7 +47,7 @@ docker compose up -d
 
 ***Note:** some services need time to start, check container's logs from `docker desktop` to see if services are ready to work with.*
 
-To check status of running containers.
+To check status of running containers:
 ```bash
 docker ps
 ```
@@ -73,16 +82,16 @@ if we see table and schema are corrected and showed, then importing csv to the P
 
 if not, these can be issues
 - check if `setup.sql` is executed successfully, by inspecting logs in docker desktop
-- check if data csv file and `setup.sql` are copied into docker container's local by using container's bash and check path in `Dockerfile` and `setup.sql`
+- check if data csv file and `setup.sql` are copied into docker container's local by using container's bash and check if path in `Dockerfile` and `setup.sql` were set correctly.
 - we need to set search_path by
 ```bash
 SET search_path TO <myschema>;
 ```
-To set only in current session.
+to set only in current session.
 ```bash
 ALTER DATABASE <mydatabase> SET search_path TO <myschema>; 
 ```
-To set permanently at database level.
+to set permanently at database level.
 
 Then exit from all bash
 ```bash
@@ -90,7 +99,7 @@ Then exit from all bash
 exit
 ```
 ### **Step 5**
-Don't forget to remove all image and containers
+Don't forget to remove all image and containers when you're done.
 ```bash
 docker compose down -v
 ```
@@ -120,4 +129,4 @@ AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflo
 </p>
 </details>
 
-**Note:** In .env file, airflow core need *FERNET* key which can obtain from fernet.py (random generated)
+**Note:** In .env file, airflow core need *FERNET* key which can be obtained from fernet.py (random generated)
