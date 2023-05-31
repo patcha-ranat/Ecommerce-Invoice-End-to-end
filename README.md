@@ -1,31 +1,39 @@
-# Development Note
-End-to-end fullstack data project practice. The project is in development...
+# Ecommerce-Invoice Development Note
+*Patcharanat P.*
 
-Prerequisite:
-- docker installed
-- postgresql installed (just in case)
-- `requirements.txt` not yet uploaded (waiting for the next process of writing DAGs)
-- get a credentials file from kaggle and activate the token
+End-to-end data project for practice. ETLs (batch), Visualization, Machine Learning development for ecommerce invoice analysis.
+
+
+*The project is in development . . .*
 
 Tools:
-- Postgres Database in Docker
-    - source
-    - data warehouse
-- MinIO
-    - data lake
-- airflow
-    - orchestration (ETLs process)
-- Bigquery
-    - data warehouse
-- PowerBI
-    - Dashboard for EDA
-- Python
-    - Model Development
-        - jupyter-notebook
-    - Deploy model
-        - FastAPI
+- Sources
+    - Postgres Database (Data warehouse)
+    - REST API (raw file url)
+    - API (with token)
+- Data Lake
+    - MinIO
+    - Google Cloud Storage
+- Data Warehouse
+    - Postgres Database
+    - Bigquery
+- Orchestrator
+    - Airflow
+- Virtualization
+    - Docker compose (for local demo environment)
+- Visualization
+    - PowerBI (Dashboard)
+- Machine Learning Model
+    - Jupyter Notebook (Model development)
+    - FastAPI (Model Deployment)
 
-## 1. Set up environment
+Prerequisite:
+- Docker and Docker compose installed.
+- Postgresql installed (just in case).
+- Get a credentials file from kaggle and activate the token for API.
+
+
+## 1. Setting up environment
 ---
 Firstly, clone this repository to obtain all neccessary files, then use it as working directory.
 ```bash
@@ -116,12 +124,11 @@ Don't forget to remove all image and containers when you're done.
 docker compose down -v
 ```
 
-## 2. Setting up Data Lake (MinIO)
----
+### **Step 6: Setting up Data Lake (MinIO)**
 After running `docker compose up -d`, check if MinIO is accessible via web browser with URL "http://localhost:9001" or "http://localhost:9000" using `username` and `password` we specified in `docker-compose.yml`.
 
-## 3. Setting up Airflow Web UI
----
+### **Step 7: Setting up Airflow Web UI**
+
 To set up airflow, we need to define more 4 services that refer to [official's .yml file template](https://airflow.apache.org/docs/apache-airflow/2.6.1/docker-compose.yaml) including `airflow-postgres` to be backendDB, `airflow-scheduler` to make scheduler, `airflow-webserver` to make airflow accessible via web UI, and `airflow-init` to initiate airflow session.
 
 Trying to understand how every components in services work make much more easier to comprehend and debug issues that occur, such as depends-on, environment, healthcheck, and storing object in `&variable`.
@@ -151,9 +158,9 @@ AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflo
 
 ***Note:*** In .env file, airflow core need *FERNET* key which can be obtained from fernet.py (random generated)
 
-## 4. Writing DAGs
+## 2. Writing DAGs
 ---
 In my case (this project), I used a dataset from kaggle which loaded to postgres database, uploaded to this repo github and I wrote DAGs to use Kaggle API to obtain the dataset directly. If you want to change data, you have to write your own DAGs which I highly recommend for steeper learning curve.
 
-### Step 1: Setting connections between Data Lake, and source
+### **Step 1: Setting connections between Data Lake, and source**
 ... In development
