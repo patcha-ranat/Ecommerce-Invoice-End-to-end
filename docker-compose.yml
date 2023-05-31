@@ -7,10 +7,10 @@ x-airflow-common:
   env_file: 
     - .env
   volumes:
-    - ./dags:/opt/airflow/dags
-    - ./logs:/opt/airflow/logs
-    - ./plugins:/opt/airflow/plugins
-    - ./config:/opt/airflow/config
+    - ./src/dags:/opt/airflow/dags
+    - ./src/logs:/opt/airflow/logs
+    - ./src/plugins:/opt/airflow/plugins
+    - ./src/config:/opt/airflow/config
 
 x-depends-on:
   &depends-on
@@ -21,10 +21,10 @@ x-depends-on:
       condition: service_completed_successfully
 
 services:
-  postgres:
+  postgres-local:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: postgres.Dockerfile
     image: postgres
     container_name: ${POSTGRES_CONTAINER}
     environment:
@@ -35,10 +35,10 @@ services:
       - ${POSTGRES_PORT}:${POSTGRES_PORT}
     restart: unless-stopped
     volumes:
-      - ./pgdata:/var/lib/postgresql/data
+      - ./src/pgdata:/var/lib/postgresql/data
 
-  minio:
-    image: quay.io/minio/minio:latest
+  minio-s3:
+    image: minio/minio:latest
     container_name: minio-container
     environment:
       MINIO_ROOT_USER: minio
@@ -47,7 +47,7 @@ services:
       - 9000:9000
       - 9001:9001
     volumes:
-      - minio-data-volume:/data
+      - ./src/minio-data-volume:/data
     restart: always
     command: server /data --console-address ":9001"
 
@@ -64,12 +64,15 @@ services:
       retries: 5
       start_period: 5s
     volumes:
-      - postgres-db-volume:/var/lib/postgresql/data
+      - ./src/postgres-db-volume:/var/lib/postgresql/data
     restart: always
 
   airflow-scheduler:
     <<: *airflow-common
     <<: *depends-on
+    build:
+      context: .
+      dockerfile: airflow.Dockerfile
     container_name: airflow-scheduler
     command: scheduler
     restart: always
@@ -77,6 +80,9 @@ services:
   airflow-webserver:
     <<: *airflow-common
     <<: *depends-on
+    build:
+      context: .
+      dockerfile: airflow.Dockerfile
     container_name: airflow-webserver
     command: webserver
     ports:
@@ -146,8 +152,6 @@ services:
     #   ports:
     #     - 1025:1025
     #     - 8025:8025
-
-
 
 volumes:
   pgdata:
