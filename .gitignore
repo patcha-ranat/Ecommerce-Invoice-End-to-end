@@ -1,0 +1,8 @@
+config
+logs
+minio-data-volume
+pgdata
+plugins
+postgres-db-volume
+*.json
+*.pyc
