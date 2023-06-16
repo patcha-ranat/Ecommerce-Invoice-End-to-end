@@ -6,8 +6,9 @@ End-to-end data project in e-commerce / retail domain for Demand Forecasting.
 ***The project is in development . . .***
 
 ## Context
-    "Typically e-commerce datasets are proprietary and consequently hard to find among publicly available data. However, The UCI Machine Learning Repository has made this dataset containing actual transactions from 2010 and 2011. The dataset is maintained on their site, where it can be found by the title "Online Retail".
-However, it's crucial in nowadays to emphasize data existing and make the most use of it. The project is created to practice and illustrate the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analyst skills, and also how to implement them in the real world utilizing Business and Marketing knowledge.
+*"Typically e-commerce datasets are proprietary and consequently hard to find among publicly available data. However, The UCI Machine Learning Repository has made this dataset containing actual transactions from 2010 and 2011. The dataset is maintained on their site, where it can be found by the title "Online Retail".*
+
+**Anyway**, it's crucial in nowadays to emphasize data existing and make the most use of it. The project is created to practice and illustrate the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analyst skills, and also how to implement them in the real world utilizing Business and Marketing knowledge.
 
 ## Processes:
 1. ETL (Extract, Transform, Load)
