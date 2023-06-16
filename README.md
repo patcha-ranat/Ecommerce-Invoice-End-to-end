@@ -1,12 +1,27 @@
-# Ecommerce-Invoice Development Note
+# End-to-end E-commerce Demand Forecasting
 *Patcharanat P.*
 
-End-to-end data project for practice. ETLs (batch), Visualization, Machine Learning development for ecommerce invoice analysis.
+End-to-end data project in e-commerce / retail domain for Demand Forecasting.
 
+***The project is in development . . .***
 
-*The project is in development . . .*
+## Context
+    "Typically e-commerce datasets are proprietary and consequently hard to find among publicly available data. However, The UCI Machine Learning Repository has made this dataset containing actual transactions from 2010 and 2011. The dataset is maintained on their site, where it can be found by the title "Online Retail".
+However, it's crucial in nowadays to emphasize data existing and make the most use of it. The project is created to practice and illustrate the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analyst skills, and also how to implement them in the real world utilizing Business and Marketing knowledge.
 
-Tools:
+## Processes:
+1. ETL (Extract, Transform, Load)
+2. Web Scraping
+3. Visualization
+4. Machine Learning development
+5. Model Deployment and Monitoring
+
+## Project Overview
+
+![project-overview](./src/Picture/project-overview.png)
+*Note: this project will also include developing strategy and marketing campagin based on data.*
+
+## Tools:
 - Sources
     - Postgres Database (Data warehouse)
     - REST API (raw file url)
@@ -26,12 +41,14 @@ Tools:
 - Machine Learning Model
     - Jupyter Notebook (Model development)
     - FastAPI (Model Deployment)
+    - Streamlit (Monitoring)
 
-Prerequisite:
+Dataset: [E-Commerce Data - Kaggle](https://www.kaggle.com/datasets/carrie1/ecommerce-data)
+
+## Prerequisites:
 - Docker and Docker compose installed.
-- Postgresql installed (just in case).
 - Get a credentials file from kaggle and activate the token for API.
-
+- Have Google Account being able to use google cloud services
 
 ## 1. Setting up environment
 ---
