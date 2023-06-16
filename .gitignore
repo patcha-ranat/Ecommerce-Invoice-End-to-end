@@ -6,3 +6,4 @@ plugins
 postgres-db-volume
 *.json
 *.pyc
+*.exe
