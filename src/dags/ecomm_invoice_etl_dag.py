@@ -1,6 +1,5 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from datetime import datetime
@@ -12,9 +11,12 @@ import os
 import json
 import tempfile
 import shutil
+from google.cloud import storage
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 
-AWS_CONN_ID = "minio-s3"
-BUCKET = "data-bucket"
+bucket_name = "ecomm-invoice-data-lake-bucket"
 
 def _extract_data_from_url():
 
@@ -22,13 +24,26 @@ def _extract_data_from_url():
     response = requests.get(url)
     data_url = response.text
 
-    s3_hook = S3Hook(aws_conn_id=AWS_CONN_ID)
-    s3_hook.load_string(
-        data_url,
-        key='data_url_uncleaned.csv',
-        bucket_name=BUCKET,
-        replace=True
+    df = pd.read_csv(pd.compat.StringIO(data_url), delimiter='\t')
+    table = pa.Table.from_pandas(df)
+    pq.write_table(table=table, where='data_url_uncleaned.parquet')
+
+    source_file_name = "data_url_uncleaned.parquet"
+    destination_blob_name = "data_url_uncleaned.parquet"
+    credentials_path = '../gcs_credentials.json'
+
+    storage_client = storage.Client.from_service_account_json(credentials_path)
+    bucket = storage_client.get_bucket(bucket_name)
+    # bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+
+    blob.upload_from_filename(source_file_name)
+
+    print(
+        f"File {source_file_name} uploaded to {destination_blob_name}."
     )
+
+
 
 def _extract_data_from_database():
     # initiate connection
@@ -44,19 +59,22 @@ def _extract_data_from_database():
 
     # Create a PostgresOperator to execute the query
     cursor.execute(query)
-    data_database = PostgresOperator(
-        task_id='extract_data_from_database',
-        postgres_conn_id='postgres-local',
-        sql=query
-    )
 
-    s3_hook = S3Hook(aws_conn_id=AWS_CONN_ID)
-    s3_hook.load_string(
-        data_database.output,
-        key='data_database_cleaned.csv',
-        bucket_name=BUCKET,
-        replace=True
-    )
+    # Fetch the data
+    data_database = cursor.fetchall()
+    # data_database = PostgresOperator(
+    #     task_id='extract_data_from_database',
+    #     postgres_conn_id='postgres-local',
+    #     sql=query
+    # )
+
+    # s3_hook = S3Hook(aws_conn_id=AWS_CONN_ID)
+    # s3_hook.load_string(
+    #     string_data=data_database.output,
+    #     key='data_database_cleaned.csv',
+    #     bucket_name=bucket_name,
+    #     replace=True
+    # )
 
 def _extract_data_from_api():
     target_file = open("kaggle.json")
@@ -81,13 +99,13 @@ def _extract_data_from_api():
     # with open(extracted_file_path, 'r', encoding='cp1252') as infile:
     #     data_api = infile.read()
 
-    s3_hook = S3Hook(aws_conn_id=AWS_CONN_ID)
-    s3_hook.load_file(
-        extracted_file_path,
-        key='data_api_uncleaned.csv',
-        bucket_name=BUCKET,
-        replace=True
-    )
+    # s3_hook = S3Hook(aws_conn_id=AWS_CONN_ID)
+    # s3_hook.load_file(
+    #     extracted_file_path,
+    #     key='data_api_uncleaned.csv',
+    #     bucket_name=bucket_name,
+    #     replace=True
+    # )
 
 def _transform_data_from_data_lake():
     pass
@@ -98,7 +116,7 @@ def _load_to_data_warehouse():
 default_args = {
     "owner": "Patcharanat",
     # "email": ["XXXXX"],
-    "start_date": timezone.datetime(2023, 5, 1),
+    "start_date": timezone.datetime(2023, 6, 26),
     "retries": 3,
     "retry_delay": timedelta(minutes=1),
 }
@@ -114,14 +132,14 @@ with DAG(
         python_callable=_extract_data_from_url
     )
 
-    extract_data_from_database = PythonOperator(
-        task_id='extract_data_from_database',
-        python_callable=_extract_data_from_database
-    )
+    # extract_data_from_database = PythonOperator(
+    #     task_id='extract_data_from_database',
+    #     python_callable=_extract_data_from_database
+    # )
 
-    extract_data_from_api = PythonOperator(
-        task_id='extract_data_from_api',
-        python_callable=_extract_data_from_api,
-    )
+    # extract_data_from_api = PythonOperator(
+    #     task_id='extract_data_from_api',
+    #     python_callable=_extract_data_from_api,
+    # )
 
     # Define dependencies

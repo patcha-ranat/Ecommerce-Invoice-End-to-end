@@ -7,3 +7,4 @@ postgres-db-volume
 *.json
 *.pyc
 *.exe
+default_filename.txt
