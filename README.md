@@ -50,6 +50,7 @@ Dataset: [E-Commerce Data - Kaggle](https://www.kaggle.com/datasets/carrie1/ecom
 - Docker and Docker compose installed.
 - Get a credentials file from kaggle and activate the token for API.
 - Have Google Account being able to use google cloud services
+*The credentials are hidden in this project*
 
 ## 1. Setting up environment
 ---
@@ -145,6 +146,8 @@ docker compose down -v
 ### **Step 6: Setting up Data Lake (MinIO)**
 After running `docker compose up -d`, check if MinIO is accessible via web browser with URL "http://localhost:9001" or "http://localhost:9000" using `username` and `password` we specified in `docker-compose.yml`.
 
+**(Update): MinIO is not further used**, instead use Google Cloud Storage as Data Lake. (extend to S3 and Blob Storage in the future)
+
 ### **Step 7: Setting up Airflow Web UI**
 
 To set up airflow, we need to define more 4 services that refer to [official's .yml file template](https://airflow.apache.org/docs/apache-airflow/2.6.1/docker-compose.yaml) including `airflow-postgres` to be backendDB, `airflow-scheduler` to make scheduler, `airflow-webserver` to make airflow accessible via web UI, and `airflow-init` to initiate airflow session.
@@ -182,3 +185,6 @@ In my case (this project), I used a dataset from kaggle which loaded to postgres
 
 ### **Step 1: Setting connections between Data Lake, and source**
 ... In development
+
+*development note*
+Currently, I'm working on debugging DAGs of 3 tasks which are: extracting data from raw url, kaggle api, and postgres database to load to data lake which is GCS (Google Cloud Storage). I'm stuck at incompatible package of airflow image and pandas, pyarrow library to transform raw url github to parquet file. So, my next approach is try to transform it to parquet file without importing pandas or pyarrow. Google credentials part seems to be working. need to be test after debug this issue.
