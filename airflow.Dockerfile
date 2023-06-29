@@ -1,19 +1,18 @@
-FROM apache/airflow:latest
+FROM apache/airflow:2.6.2
 
 USER airflow
 
 # RUN curl -sSL https://install.python-poetry.org | python -
-RUN pip install poetry
 
-COPY pyproject.toml poetry.lock ./
+# RUN pip install poetry
 
-RUN poetry install
+# COPY pyproject.toml poetry.lock ./
 
-# COPY requirements.txt .
+# RUN poetry install
 
-# RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt .
 
-# COPY credentials/kaggle.json .
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY credentials/kaggle.json /home/airflow/.kaggle/
 
