@@ -8,3 +8,4 @@ postgres-db-volume
 *.pyc
 *.exe
 default_filename.txt
+test.py
