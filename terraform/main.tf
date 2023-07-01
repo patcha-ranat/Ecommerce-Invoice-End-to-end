@@ -9,7 +9,7 @@ terraform {
 }
 
 provider "google" {
-  credentials = file("./credentials/gcs_credentials.json")
+  credentials = file("../credentials/gcs_credentials.json")
   project     = var.project
   region      = var.region
 }
@@ -68,39 +68,42 @@ resource "google_bigquery_table" "table" {
   dataset_id = google_bigquery_dataset.dataset.dataset_id
   project    = var.project
   table_id   = var.TABLE_ID
-
-  schema {
-    fields {
-      name = "InvoiceNO"
-      type = "STRING"
-    }
-    fields {
-      name = "StockCode"
-      type = "STRING"
-    }
-    fields {
-      name = "Description"
-      type = "STRING"
-    }
-    fields {
-      name = "Quantity"
-      type = "INTEGER"
-    }
-    fields {
-      name = "InvoiceDate"
-      type = "TIMESTAMP"
-    }
-    fields {
-      name = "UnitPrice"
-      type = "FLOAT"
-    }
-    fields {
-      name = "CustomerID"
-      type = "INTEGER"
-    }
-    fields {
-      name = "Country"
-      type = "STRING"
-    }
-  }
+  deletion_protection  = false
+  
+  schema = <<EOF
+    [
+      {
+        "name": "InvoiceNO",
+        "type": "STRING"
+      },
+      {
+        "name": "StockCode",
+        "type": "STRING"
+      },
+      {
+        "name": "Description",
+        "type": "STRING"
+      },
+      {
+        "name": "Quantity",
+        "type": "INTEGER"
+      },
+      {
+        "name": "InvoiceDate",
+        "type": "TIMESTAMP"
+      },
+      {
+        "name": "UnitPrice",
+        "type": "FLOAT"
+      },
+      {
+        "name": "CustomerID",
+        "type": "INTEGER"
+      },
+      {
+        "name": "Country",
+        "type": "STRING"
+      }
+    ]
+EOF
 }

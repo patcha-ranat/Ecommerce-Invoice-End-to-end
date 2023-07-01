@@ -31,7 +31,7 @@ End-to-end data project in the e-commerce and retail domain for Demand Forecasti
 - Data Lake
     - Google Cloud Storage
     
-    *(Extend to S3 AWS and Blob Azure Storage in the future)*
+    *(Extend to Amazon S3 and Azure Blob Storage in the future)*
 - Data Warehouse
     - Postgres Database
     - Bigquery (External and Native Tables)
@@ -57,7 +57,7 @@ Dataset: [E-Commerce Data - Kaggle](https://www.kaggle.com/datasets/carrie1/ecom
 *The credentials are hidden in this project*
 
 ## 1. Setting up environment
----
+
 Firstly, clone this repository to obtain all neccessary files, then use it as working directory.
 ```bash
 git clone https://github.com/Patcharanat/ecommerce-invoice
@@ -210,7 +210,7 @@ AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflo
 ***Note:*** In `.env` file, airflow core need *FERNET* key which can be obtained from fernet.py (random generated)
 
 ## 2. ETL process: Writing DAGs and managing cloud services
----
+
 In my case (this project), I used a dataset from kaggle which was:
 - loaded to postgres database
 - uploaded to this repo github as csv format
@@ -243,6 +243,30 @@ Click `Create`, and now you have your own data lake bucket.
 
 ***Note:** Actually, we can achieve creating the bucket by **"Terraform"**, which is an alternative way to create cloud resources. you can see the code in `terraform` folder, consisting of [main.tf](terraform/main.tf) and [variables.tf](terraform/variables.tf). Terraform make it easier to create and delete or managing the resources in this demonstration with a few bash commands*
 
+**Terraform**
+
+The [`main.tf`](./terraform/main.tf) file, using some variables from [`variables.tf`](./terraform/variables.tf) file, will produce the following resources:
+- 1 data lake bucket
+- 1 Bigquery dataset
+- 1 Bigquery table
+
+To use terraform, you need to install terraform in your local machine (+add to PATH), and have your google credentials for the service account in your local machine as well. Then, you can run terraform commands in your terminal.
+
+```bash
+terraform init
+
+terraform plan
+
+terraform apply
+
+terraform destroy
+```
+
+you can use `terraform init` to initialize terraform (where `main.tf` located) in your local machine, `terraform plan` to see what resources will be created, `terraform apply` to create the resources, and `terraform destroy` to delete the resources. After all, you can see the result in your GCP console.
+
+***Note**: The written script make us to easily create and delete the resources which proper for testing purpose not on production.*
+
+
 ### **Step 2.2: Setting up DAGs**
 In this project, I wrote [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl_dag.py) to create 1 DAG of **8 tasks**, which are:
 1. Reading data from raw url from github that I uploaded myself. Then, upload it to GCP bucket as uncleaned data.
@@ -257,12 +281,12 @@ In this project, I wrote [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl
 But before triggering the DAG, we need to set up the connection between Airflow and our containerized Postgres database in Airflow web UI:
 
 go to `Admin` > `Connections` > `Create` 
-- `Connection Type: `**Postgres**
-- `Host: `{*service name of postgres in docker-compose.yml*}
-- `Schema: `{*schema name we used in `setup.sql`*}
-- `Login: `{*username of postgres in docker-compose.yml*}
-- `Password: ` {*username of postgres in docker-compose.yml*}
-- `Port: `{{*username of postgres in docker-compose.yml*}}
+- `Connection Type:` **Postgres**
+- `Host:` {*service name of postgres in docker-compose.yml*}
+- `Schema:` {*schema name we used in `setup.sql`*}
+- `Login:` {*username of postgres in docker-compose.yml*}
+- `Password:` {*username of postgres in docker-compose.yml*}
+- `Port:` {*username of postgres in docker-compose.yml*}
 
 And then, `Save`
 
@@ -276,7 +300,7 @@ After this step, we're gonna test our DAG by initating docker compose again, and
 - It was kinda lost when trying to write my own DAGs with my own concepts, like how to get, read, fetch, write the file, or how to connect and upload to the cloud. Reading directly from official documentation was a big help, such as Google Cloud Documentation, and Kaggle API Documentation.
 - Reading Logs in airflow web UI was very helpful to debug the issues.
 - When we have google credentials as a json file, it make us less concerned about how to authenticate, like gcloud, gsutil etc (or even connection in Airflow). We just need to mount the credentials into the airflow container, put the path of the json file in the code and use the right API or library provided by provider which mostly can be found as templates in official documentation.
-- The libraries are able to be used or not, depends on requirements.txt file. If you want to use a library, you have to install it in requirements.txt file, and rebuild the image.
+- The libraries are able to be used or not, depends on requirements.txt file. If you want to use a library, you have to install it in `requirements.txt` file, and rebuild the image.
     - I encountered that `pandas` version and `pyarrow` are not compatible with python version of airflow image, so I decide not to use pandas and pyarrow to transform data to parquet file, but use `csv` instead.
  
 </p>

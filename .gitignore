@@ -9,3 +9,5 @@ postgres-db-volume
 *.exe
 default_filename.txt
 test.py
+.terraform*
+terraform.*
