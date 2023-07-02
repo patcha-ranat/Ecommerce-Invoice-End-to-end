@@ -103,6 +103,10 @@ resource "google_bigquery_table" "table" {
       {
         "name": "Country",
         "type": "STRING"
+      },
+      {
+        "name": "total_spend",
+        "type": "FLOAT"
       }
     ]
 EOF
