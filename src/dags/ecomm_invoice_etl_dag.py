@@ -2,6 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.operators.dummy import DummyOperator
+from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateExternalTableOperator
 from datetime import datetime
 from airflow.utils import timezone
 from datetime import timedelta
@@ -11,32 +12,13 @@ import os
 import tempfile
 import shutil
 from google.cloud import storage
-import pyarrow.csv as pv
-import pyarrow.parquet as pq
 import logging
-import gcsfs
+
+from transform_load import clean_data
 
 project_id = os.environ["PROJECT_ID"]
 bucket_name = os.environ["BUCKET_NAME"]
 credentials_path = '/opt/airflow/gcs_credentials.json'
-
-def transform_csv_to_parquet(destination_blob_name, credentials) -> None:
-    """
-    transform csv to parquet in data lake
-    """
-    csv_file_path = f"gs://ecomm-invoice-data-lake-bucket/{destination_blob_name}"
-    parquet_file_path = destination_blob_name.replace("csv", "parquet")
-
-    # Open GCS CSV file using gcsfs
-    fs = gcsfs.GCSFileSystem(project=project_id, token=credentials)
-    with fs.open(csv_file_path, 'rb') as file:
-        # Read CSV file using pyarrow.csv with explicit encoding
-        options = pv.ReadOptions(encoding='cp1252')
-        csv_table = pv.read_csv(file, options)
-
-    pq.write_table(csv_table, parquet_file_path)
-    logging.info(f"File {destination_blob_name} is converted to parquet as {parquet_file_path}.")
-
 
 def _extract_data_from_url():
     # retrieve data from url
@@ -56,9 +38,6 @@ def _extract_data_from_url():
         file.write(data_url)
     file.close()
     logging.info(f"File {destination_blob_name} is stored.")
-
-    # transform csv to parquet in data lake
-    # transform_csv_to_parquet(destination_blob_name, credentials=storage_client._credentials)
 
 
 def _extract_data_from_database():
@@ -93,9 +72,6 @@ def _extract_data_from_database():
     cursor.close()
     conn.close()
 
-    # transform csv to parquet in data lake
-    # transform_csv_to_parquet(destination_blob_name, credentials=storage_client._credentials)
-    
 
 def _extract_data_from_api():
     # authenticate and download data from Kaggle API
@@ -120,14 +96,10 @@ def _extract_data_from_api():
     # remove created csv file from local
     os.remove(zip_path)
 
-    # transform csv to parquet in data lake
-    # transform_csv_to_parquet(destination_blob_name, credentials=storage_client._credentials)
-
-def _transform_data_from_data_lake():
-    pass
 
 def _load_to_data_warehouse():
     pass
+
 
 default_args = {
     "owner": "Ken",
@@ -155,13 +127,39 @@ with DAG(
 
     extract_data_from_api = PythonOperator(
         task_id='extract_data_from_api',
-        python_callable=_extract_data_from_api,
+        python_callable=_extract_data_from_api
     )
 
-    transform_data_from_data_lake = DummyOperator(
-        task_id="transform_data_from_data_lake"
+    transform_data_from_data_lake = PythonOperator(
+        task_id="transform_data_from_data_lake",
+        python_callable=clean_data,
+        op_kwargs={"source_file": "data_api_uncleaned.csv",
+                   "destination_file": "ecomm_invoice_transaction.parquet",
+                   "project_id": project_id,
+                   "bucket_name": bucket_name,
+                   "credentials_path": credentials_path}
     )
 
-    extract_data_from_api >> transform_data_from_data_lake
-    extract_data_from_database >> transform_data_from_data_lake
-    extract_data_from_url >> transform_data_from_data_lake
+    # load_to_bigquery = DummyOperator(
+    #     task_id="load_to_bigquery"
+    # )
+
+    # load_to_bigquery_external = BigQueryCreateExternalTableOperator(
+    #     task_id="load_to_bigquery_external",
+    #     table_resource={
+    #         "tableReference": {
+    #             "projectId": project_id,
+    #             "datasetId": "ecomm_invoice",
+    #             "tableId": "ecomm_invoice_transaction_external",
+    #         },
+    #         "externalDataConfiguration": {
+    #             "sourceFormat": "PARQUET",
+    #             "sourceUris": [f"gs://{bucket_name}/raw/{parquet_file}"],
+    #         },
+    #     },
+    # )
+
+
+    [extract_data_from_api, extract_data_from_database, extract_data_from_url] >> transform_data_from_data_lake
+    # transform_data_from_data_lake >> [load_to_bigquery, load_to_bigquery_external]
+    
