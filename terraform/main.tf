@@ -73,35 +73,35 @@ resource "google_bigquery_table" "table" {
   schema = <<EOF
     [
       {
-        "name": "InvoiceNO",
+        "name": "invoiceno",
         "type": "STRING"
       },
       {
-        "name": "StockCode",
+        "name": "stockcode",
         "type": "STRING"
       },
       {
-        "name": "Description",
+        "name": "description",
         "type": "STRING"
       },
       {
-        "name": "Quantity",
+        "name": "quantity",
         "type": "INTEGER"
       },
       {
-        "name": "InvoiceDate",
+        "name": "invoicedate",
         "type": "TIMESTAMP"
       },
       {
-        "name": "UnitPrice",
+        "name": "unitprice",
         "type": "FLOAT"
       },
       {
-        "name": "CustomerID",
+        "name": "customerid",
         "type": "INTEGER"
       },
       {
-        "name": "Country",
+        "name": "country",
         "type": "STRING"
       },
       {

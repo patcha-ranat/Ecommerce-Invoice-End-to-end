@@ -41,6 +41,9 @@ def clean_data(source_file, destination_file, project_id, bucket_name, credentia
     df = pd.merge(df, most_freq, on='StockCode', how='left')
     df = df.reindex(columns=columns_index)
 
+    # standardize columns name
+    df.columns = df.columns.str.lower()
+
     # Write the cleaned data to a new parquet file
     df.to_parquet(destination_file)
 
@@ -52,6 +55,12 @@ def clean_data(source_file, destination_file, project_id, bucket_name, credentia
 
     # Optionally, delete the local downloaded data file
     os.remove(destination_file)
+
+def load_data_external():
+    pass
+
+def load_data():
+    pass
 
 if __name__ == "__main__":
     pass
