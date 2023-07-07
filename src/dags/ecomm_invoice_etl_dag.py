@@ -1,7 +1,7 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.operators.dummy import DummyOperator
+# from airflow.operators.dummy import DummyOperator
 from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateExternalTableOperator
 from datetime import datetime
 from airflow.utils import timezone
@@ -14,11 +14,16 @@ import shutil
 from google.cloud import storage
 import logging
 
-from transform_load import clean_data
+from transform_load import clean_data, load_data, clear_staging_area
 
+# get variables from .env file
 project_id = os.environ["PROJECT_ID"]
 bucket_name = os.environ["BUCKET_NAME"]
-credentials_path = '/opt/airflow/gcs_credentials.json'
+dataset_name = os.environ["DATASET_NAME"]
+table_name = os.environ["TABLE_NAME"]
+credentials_path = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+load_target_file = "ecomm_invoice_transaction.parquet"
+
 
 def _extract_data_from_url():
     # retrieve data from url
@@ -97,10 +102,6 @@ def _extract_data_from_api():
     os.remove(zip_path)
 
 
-def _load_to_data_warehouse():
-    pass
-
-
 default_args = {
     "owner": "Ken",
     # "email": ["XXXXX"],
@@ -133,33 +134,54 @@ with DAG(
     transform_data_from_data_lake = PythonOperator(
         task_id="transform_data_from_data_lake",
         python_callable=clean_data,
-        op_kwargs={"source_file": "data_api_uncleaned.csv",
-                   "destination_file": "ecomm_invoice_transaction.parquet",
-                   "project_id": project_id,
-                   "bucket_name": bucket_name,
-                   "credentials_path": credentials_path}
+        op_kwargs={
+            "source_file": "data_api_uncleaned.csv",
+            "destination_file": load_target_file,
+            "project_id": project_id,
+            "bucket_name": bucket_name,
+            "credentials_path": credentials_path
+        }
     )
 
-    # load_to_bigquery = DummyOperator(
-    #     task_id="load_to_bigquery"
-    # )
+    load_to_bigquery = PythonOperator(
+        task_id="load_to_bigquery",
+        python_callable=load_data,
+        op_kwargs={
+            "project_id": project_id,
+            "bucket_name": bucket_name,
+            "dataset_name": dataset_name,
+            "table_name": table_name,
+            "credentials_path": credentials_path
+        }
+    )
 
-    # load_to_bigquery_external = BigQueryCreateExternalTableOperator(
-    #     task_id="load_to_bigquery_external",
-    #     table_resource={
-    #         "tableReference": {
-    #             "projectId": project_id,
-    #             "datasetId": "ecomm_invoice",
-    #             "tableId": "ecomm_invoice_transaction_external",
-    #         },
-    #         "externalDataConfiguration": {
-    #             "sourceFormat": "PARQUET",
-    #             "sourceUris": [f"gs://{bucket_name}/raw/{parquet_file}"],
-    #         },
-    #     },
-    # )
+    load_to_bigquery_external = BigQueryCreateExternalTableOperator(
+        task_id="load_to_bigquery_external",
+        table_resource={
+            "tableReference": {
+                "projectId": project_id,
+                "datasetId": dataset_name,
+                "tableId": f"{table_name}_external",
+            },
+            "externalDataConfiguration": {
+                "sourceFormat": "PARQUET",
+                "sourceUris": [f"gs://{bucket_name}/staging_area/{load_target_file}"],
+            },
+        },
+        gcp_conn_id="my_gcp_conn_id",
+    )
 
+    # clear_staging_area_gcs = PythonOperator(
+    #     task_id="clear_staging_area_gcs",
+    #     python_callable=clear_staging_area,
+    #     op_kwargs={
+    #         "bucket_name": bucket_name,
+    #         "blob_name": f"staging_area/{load_target_file}",
+    #         "credentials_path": credentials_path
+    #     }
+    # )
 
     [extract_data_from_api, extract_data_from_database, extract_data_from_url] >> transform_data_from_data_lake
-    # transform_data_from_data_lake >> [load_to_bigquery, load_to_bigquery_external]
+    transform_data_from_data_lake >> [load_to_bigquery, load_to_bigquery_external] 
+    # [load_to_bigquery, load_to_bigquery_external] >> clear_staging_area_gcs
     
