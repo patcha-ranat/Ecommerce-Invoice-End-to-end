@@ -11,3 +11,4 @@ default_filename.txt
 test.py
 .terraform*
 terraform.*
+.ipynb_checkpoints
