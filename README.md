@@ -1,21 +1,22 @@
 # End-to-end E-commerce Demand Forecasting
 *Patcharanat P.*
+```text
+Always click "⋮≡" adjacent to `README.md` at top left to show the table of contents if you're lost.
+```
+**End-to-end Data project** in the e-commerce and retail domain covering the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analytic skills, and also how to implement them in the real world utilizing Business and Marketing knowledge.
 
-End-to-end data project in the e-commerce and retail domain for Demand Forecasting, Customer Segmentation, and Market Basket Analysis.
-
-***The project is in development . . .***
+*The project is in development . . .*
 
 ## **Context**
-*"Typically e-commerce datasets are proprietary and consequently hard to find among publicly available data. However, The UCI Machine Learning Repository has made this dataset containing actual transactions from 2010 and 2011. The dataset is maintained on their site, where it can be found by the title "Online Retail".*
 
-**Anyway**, it's crucial in nowadays to emphasize data existing and make the most use of it. The project was created to practice and demonstrate the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analytic skills, and also how to implement them in the real world utilizing Business and Marketing knowledge.
+It's crucial in nowadays to emphasize data existing and make the most use of it. **The project was created to practice and demonstrate the full process of data exploitation** covering setting up environments, ETL process, Web Scraping, Data Visualization, Machine Learning Model Development, Model Deployment and Monitoring using E-commerce data, and also extend to develop strategy and marketing campagin based on the data.
 
 ## **Processes**:
-1. [Setting up environment](#1-setting-up-environment)
-2. [ETL (Extract, Transform, Load): Writing DAGs and managing cloud services](#2-etl-process-writing-dags-and-managing-cloud-services)
+1. [Setting up Environment](#1-setting-up-environment)
+2. [ETL (Extract, Transform, Load): Writing DAGs and Managing Cloud Services](#2-etl-process-writing-dags-and-managing-cloud-services)
 3. Web Scraping
 4. [EDA and Data Visualization](#4-eda-and-data-visualization)
-5. [Machine Learning development](#5-model-development)
+5. [Machine Learning Model Development](#5-machine-learning-model-development)
 6. Model Deployment and Monitoring
 
 ## **Project Overview**
@@ -40,8 +41,9 @@ End-to-end data project in the e-commerce and retail domain for Demand Forecasti
 - Virtualization and Infrastucture management
     - Docker compose
     - Terraform
-- Visualization
+- EDA & Visualization
     - PowerBI (Desktop and Service)
+    - Python (Jupyter Notebook)
 - Machine Learning Model
     - Jupyter Notebook (Model development)
     - FastAPI (Model Deployment)
@@ -55,7 +57,9 @@ Dataset: [E-Commerce Data - Kaggle](https://www.kaggle.com/datasets/carrie1/ecom
 
 *The credentials are hidden in this project*
 
-## 1. Setting up environment
+## 1. Setting up Environment
+
+![setting-overview](./src/Picture/setting-overview.png)
 
 Firstly, clone this repository to obtain all neccessary files, then use it as working directory.
 ```bash
@@ -67,11 +71,9 @@ We need to set up environment to demo ETL process, which including:
 
 All of the tools need to be run in different environment to simulate the real use-case. Hence, Docker compose become important for demo.
 
-***Note1:** the hardest part is setting up environments.*
+***Note:** if you want to reproduce the project by yourself, just create a folder for your working directory. And, the process you need to do will be remarked with **`DIY`***.
 
-***Note2:** if you want to reproduce the project by yourself, just create a folder for your working directory. And, the process you need to do will be remarked with **`DIY`***.
-
-### **Step 1.1: Setting up overall services (containers)**
+### **Step 1.1: Setting up Overall Services (containers)**
 Open your docker desktop and execute bash command (in terminal) within your working directory (in clone file) by:
 ```bash
 docker compose build
@@ -83,7 +85,11 @@ This command will build all containers we specified in `docker-compose.yml` file
 - Installing `requirements.txt` for airflow's container to be able to use libraries we needed in DAGs.
 - Add a Kaggle credentials file: `kaggle.json` (in this case we use Kaggle API) to make API usable.
 
-**DIY**: Setting up overall services (containers)
+**Note1**: you may fail to run `docker compose build` since, you may not have google cloud credentials as a json file in your local. You can skip to [Step 2.1: Setting up Data Lake, and Data Warehouse](#step-21-setting-data-lake-and-data-warehouse) in ***Service account*** part to get your own google crendentials json file and put it in your own created `credentials` folder in the current working directory and try running `docker compose build` again.
+
+*Note2: Don't forget to get `Kaggle.json` credentials, and add to `credentials` folder also.*
+
+**DIY**: Setting up Overall Services (containers)
 <details>
 <p>
 
@@ -99,7 +105,7 @@ If you're new to container, you will be confused a little with using path. pleas
 </p>
 </details>
 
-### **Step 1.2: Intiating all containers**
+### **Step 1.2: Intiating all Containers**
 Initialize docker container(s) and run process in background (Detach mode)
 ```bash
 docker compose up -d
@@ -111,6 +117,8 @@ To check status of running containers:
 ```bash
 docker ps
 ```
+
+<img src="./src/Picture/docker-ps.jpg">
 
 ### **Step 1.3: Checking if all Dockerfiles correctly executed**
 What to be checked are
@@ -132,9 +140,11 @@ ls docker-entrypoint-initdb.d/
 
 you should see the data csv file and `setup.sql` file in the directory.
 
+<img src="./src/Picture/dockerfile-executed.jpg">
+
 What you should check more is that credentials file: `kaggle.json` correctly imported in airflow's scheduler and webservice containers.
 
-### **Step 1.4: Checking data in a database**
+### **Step 1.4: Checking Data in a Database**
 Access to postgres container, and then access database to check if csv file copied into table.
 ```bash
 psql -U postgres -d mydatabase
@@ -147,6 +157,8 @@ Then we will check table, and schema we executed by `setup.sql` file
 \dn or \z -- to see schemas list
 ```
 if we see table and schema are corrected and showed, then importing csv to the Postgres database part is done.
+
+<img src="./src/Picture/check-postgres.jpg">
 
 if not, these can be issues
 - check if `setup.sql` is executed successfully, by inspecting logs in docker desktop
@@ -176,10 +188,13 @@ docker compose down -v
 
 and remove all images via `docker desktop`, we will initiate `docker compose build` and `docker compose up -d` again, when we want to test ETL process (test our airflow DAGs).
 
+<img src="./src/Picture/docker-desktop.jpg">
 
 ### **Step 1.6: Setting up Airflow Web UI**
 
 To set up airflow, we need to define more 4 services that refer to [official's .yml file template](https://airflow.apache.org/docs/apache-airflow/2.6.1/docker-compose.yaml) including `airflow-postgres` to be backendDB, `airflow-scheduler` to make scheduler, `airflow-webserver` to make airflow accessible via web UI, and `airflow-init` to initiate airflow session.
+
+<img src="./src/Picture/airflow-ui.jpg" width="75%">
 
 Understanding how every components in services work make much more easier to comprehend and debug issues that occur, such as `depends-on`, `environment`, `healthcheck`, `context`, `build`, and storing object in `&variable`.
 
@@ -208,16 +223,18 @@ AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflo
 
 ***Note:*** In `.env` file, airflow core need *FERNET* key which can be obtained from fernet.py (random generated)
 
-## 2. ETL process: Writing DAGs and managing cloud services
+## 2. ETL process: Writing DAGs and Managing Cloud Services
 
 In my case (this project), I used a dataset from kaggle which was:
 - loaded to postgres database
 - uploaded to this repo github as csv format
 - and I wrote DAGs to use Kaggle API to obtain the dataset directly from the Kaggle website.
 
+<img src="./src/Picture/etl-overview.png">
+
 If you want to change data, you have to write your own DAGs what match your specific use-case.
 
-### **Step 2.1: Setting Data Lake, and Data Warehouse**
+### **Step 2.1: Setting up Data Lake, and Data Warehouse**
 As we will use GCP (Google Cloud Platform) as our Data Lake and Data Warehouse, we need to make our airflow script, which run in docker containers in local, being able to connect to GCP by using **google credentials** as known as `service account` or `IAM`. I recommend to manually get the credential from GCP console for the safety aspect.
 
 **Service Account**
@@ -244,6 +261,8 @@ Do the following:
 
 Until now, you've finished getting service account credentials.
 
+<img src="./src/Picture/gcp-iam.jpg">
+
 **Data Lake**
 
 The next step is creating your Google cloud storage bucket. Go to `Cloud Storage` > `Create` > `Name your bucket` (which *globally unique*)
@@ -257,6 +276,8 @@ Then, choose the options that match you specific needs, the recommend are:
 
 Click `Create`, and now you have your own data lake bucket.
 
+<img src="./src/Picture/gcs-ui.jpg" width="75%">
+
 **Data Warehouse**
 
 The last step is creating your Bigquery dataset and table. In Bigquery (Google Data warehouse) you could have many projects, each project might have many datasets, and each dataset might have many tables. Understanding of this hierarchy, we can easily know what we should create for a data table.
@@ -269,6 +290,8 @@ Do the following to create your dataset and table:
 - Click on 3-dot after your created dataset > `Create table` > `Select your data source` (In this case, select empty table) > `name your table` > define schema > `Create table`
 
 Until now, you've finished creating your data warehouse that's ready to load our data in.
+
+<img src="./src/Picture/bigquery-ui.jpg" width="75%">
 
 As you can see it's quite inconvenient that we have to create all of these resources manually via Google UI. So, we will use **Terraform** to create these resources in the next step.
 
@@ -304,6 +327,9 @@ After all, you can see the result in your GCP console, in Google cloud storage, 
 
 
 ### **Step 2.2: Setting up DAG and Connections**
+
+<img src="./src/Picture/airflow-dag-graph.jpg">
+
 In this project, I wrote [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl_dag.py) to create 1 DAG of **(7+1) tasks**, which are:
 1. Reading data from raw url from github that I uploaded myself. Then, upload it to GCP bucket as uncleaned data.
 2. Fetching data from the postgres database that we simulate in docker containers as a data warehouse source. Then, upload it to GCP bucket as cleaned data.
@@ -312,7 +338,7 @@ In this project, I wrote [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl
 5. Loading to data warehouse (Bigquery) as cleaned data with a Native table way from staging area.
 6. Loading to data warehouse (Bigquery) as cleaned data with an External table way from staging area.
 7. Loading to another Postgres database as cleaned data.
-8. Clearing data in staging area (GCP bucket). **(this will not be used since we will implement an external table that requires the source file to be exist)**
+8. Clearing data in staging area (GCP bucket). **(this will not be used since we will implement an external table that requires the source file to be exists)**
 
 After we wrote the DAG script, we're gonna test our DAG by initating docker compose again, and go to `localhost:8080` in web browser, get ready to trigger DAG and see if our DAG worked successfully.
 
@@ -320,27 +346,33 @@ But before triggering the DAG, we need to set up the connection between Airflow 
 
 **Postgres connection**: Go to `Admin` > `Connections` > `Create` 
 - `Connection Type:` **Postgres**
-- `Host:` {*service name of postgres in docker-compose.yml*}
-- `Schema:` {*schema name we used in `setup.sql`*}
-- `Login:` {*username of postgres in docker-compose.yml*}
-- `Password:` {*username of postgres in docker-compose.yml*}
-- `Port:` {*username of postgres in docker-compose.yml*}
+- `Host` *service name of postgres in docker-compose.yml*
+- `Schema` *schema name we used in `setup.sql`*
+- `Login` *username of postgres in docker-compose.yml*
+- `Password` *username of postgres in docker-compose.yml*
+- `Port` *username of postgres in docker-compose.yml*
+
+<img src="./src/Picture/airflow-connections-postgres.jpg" width="75%">
 
 And then, `Save`
 
 ***Note:** we used **`database name`** that we specified in `docker-compose.yml` in DAG script where we need to connect to the database, PostgresHook with `conn_id` as Postgres Host name, and `schema` as **`database name`***.
 
 **Bigquery connection**: Go to `Admin` > `Connections` > `Create` 
-- `Connection Type:` **Google Cloud**
-- `Host:` 
-- `Schema:` 
-- `Login:` 
-- `Password:` 
-- `Port:` 
+- `Connection Id`: *your own defined name (will be use in DAG)*
+- `Connection Type`: **Google Cloud** 
+- `Project Id`: Your Project Id
+- `Keyfile Path`: *absolute path to your service account credentials file*
+
+<img src="./src/Picture/airflow-connections-google.jpg" width="75%">
 
 And then, `Save` again.
 
+**Note:** you have to change the code in [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl_dag.py) to match your connection id that you created in Airflow UI, and your project id also.
+
 For details of airflow connection configuring, we only create connections of Postgres and Bigquery for fetching data from containerized Postgres database, and creating **external table** for Bigquery respectively because it's required, unless airflow could not connect to the applications and cause the bug. Most of time, you can tell if it requires connection in Airflow UI by existing of `conn_id` arguments in the Operators. But, the other connection, Google Cloud Storage, is not required to be created in Airflow UI, because we use the credentials file that mounted into Airflow container to authenticate the connection in the code.
+
+<img src="./src/Picture/airflow-connections.jpg" width="75%">
 
 <details><summary>The issues I encountered during developed DAG</summary>
 <p>
@@ -368,6 +400,8 @@ For details of airflow connection configuring, we only create connections of Pos
 
 **Bigquery: Native tables vs External tables**
 
+<img src="./src/Picture/native-vs-external.png" width="75%">
+
 In the DAG script, we have 2 tasks to load data to Bigquery, one is using Native table, and another is using External table. the differences between them are their performance and how it works.
 
 External tables are suitable when you want to query data without loading it into BigQuery, optimizing costs and leveraging existing data sources. Native tables, on the other hand, offer enhanced performance and advanced features within BigQuery, like partitioning and clustering.
@@ -379,6 +413,8 @@ External tables are suitable when you want to query data without loading it into
 After finishing the writing DAG part, we can go to `localhost:8080` via web browser and login with username, and password we defined in [docker-compose.yml](docker-compose.yml) file. Then, we can see the DAGs we created in the UI. We can trigger the DAG by clicking on the `Trigger DAG` button, and monitor the progress of the DAG by clicking on the DAG name.
 
 You can also see the logs of each task by clicking on the task name in the DAG graph and see how the tasks flow is working via Graph.
+
+<img src="./src/Picture/airflow-triggered.jpg">
 
 Most of time, you don't write the DAGs in one time and test once it's done, you have come to this UI, triggering and monitoring to see if it works or not, and then fix the bugs. So, you have to trigger the DAGs many times, and see the logs to debug the code. It's very helpful to debug the code by reading the logs and checking which tasks are failed.
 
@@ -401,10 +437,45 @@ Actually, we have to do the **EDA** (Exploratory Data Analysis) before loading d
 
 This part is mostly done with Python, since it's more flexible to do ad-hoc analysis. I used **Pandas** and **Matplotlib** to do the analysis.
 
-
+- `CustomerID` contains null values
+    - fill null values with int 0 → for RFM, CustomerID 0 will be removed
+- `Description` contains null values
+    - fill null values with “No Description”
+- `Description` contains different descriptions for the same stock code
+    - replace the most frequent description → for market basket analysis
+- `UnitPrice` contains negative values
+    - StockCode "B": adjust bad dept
+- `Quantity` contains negative values means the refund
+- `Quantity` and `UnitPrice` contain outliers
+    - need to be removed for model development
+    - should be kept for revenue analysis
+- `Quantity` < 0 & `UnitPrice` = 0 → Anomaly 
+    - should be removed for model development
+    - should be kept for revenue analysis
+    - should be filtered out for market basket analysis
+    - it can be something, like damagae, manually filled, etc.
+- `InvoiceNo` contains "C" → refund
+- Inconsistent `StockCode`
+    - "D" → discount
+    - "M" → manual (there's also "m")
+    - "S" → sample
+    - "BANK CHARGES" → bank charges
+    - "POST" → postage
+    - "DOT" → dotcom postage
+    - "CRUK" → charity
+    - "PADS" → pads to match all cushions
+    - "C2" → carriage
+    - the digits StockCode with a letter → the same product but different colors
+- More from random data description: `UnitPrice` is in "Pound sterling" 
+- `Country` mostly contains "United Kingdom" → more than 90% of the data
+- `InvoiceDate` includes time, but not in the same timezone, for different countries
 
 </p>
 </details>
+
+<img src="./src/Picture/boxplot_outlier.png" width="75%">
+
+You can check the code in [**ecomm_eda.ipynb**](ecomm_eda.ipynb) file.
 
 ### 4.2 PowerBI Dashboard
 
@@ -417,7 +488,22 @@ We can conenct parquet file locally to Power BI:
 
 Now we can see the data in PowerBI, and do the data visualization.
 
-## 5. Model Development
+![ecomm_pbi](./src/Picture/ecomm_pbi.jpg)
+
+I won't go into detail of how to create the dashboard or each component, but you can download and check it yourself in [**ecomm_bi.pbix**](ecomm_bi.pbix) file.
+
+What worth to mention are:
+- I used **DAX** to calculate Growth Rate as a measure that would be quite complex for some people who are not familiar with PowerBI or DAX, but it used regular formula as: `(Current Context month - Previous month) / Previous month`. I used `CALCULATE` function to calculate the previous month value together with `ALLSELECTED`, and `DIVIDE` function to calculate the growth rate.
+- I linked variables to be able to **Drill Through** to other reports, making the dashboard more interactive, and more in-depth to analyze.
+
+A little note for future myself:
+- **Dashboard is about Storytelling**, so it's better to have a story in mind before creating the dashboard. It's not just about the data, but how to arrange the story from the data.
+- **It's crucial to know who are the audiences of the dashboard, and what is the objective of the dashboard**. So, we can select the right metrics, right data, and right visualization.
+- **Data model is very important**, it's the foundation of the dashboard. If the data model is not correct, the dashboard will not be correct. If the data model come in a good shape, the dashboard will be easier to create, and the data will be easier to analyze. (especially in aspect of **Time Intelligence**)
+
+*Note: I will update the dashboard in the future, since it's not fully finished.*
+
+## 5. Machine Learning Model Development
 
 The Model Development part is not fully finished yet, but some part of it are done and ready to be presented.
 
@@ -449,7 +535,8 @@ As a result, **KMeans emerged as a crucial machine learning technique for effect
 
 Moreover, we can use **XGBoost to find the most important features** that influence the customer segments, and further concern and develop strategies regarding that features, or even use them to segment customers with KMeans again.
 
-**RFM and Features**
+**RFM and Features Details**
+
 First, we will form the RFM table based on customer trasactions and add some more features (Feature Engineering) that we think it might be useful for segmentation which include:
 - Recency
 - Frequency
@@ -463,12 +550,19 @@ First, we will form the RFM table based on customer trasactions and add some mor
 - frequency of purchase per month
 - refund rate
 
+Eventually, we will get a new table that represents customers profile and their behavior.
+
 **KMeans**
+
+Before we put the customer profile data into KMeans, we should scale the data first , in my case I used **Robust Scaler**, to make the data have the same scale, since KMeans algorithm use distance to calculate the clusters, so it's sensitive to the different scale of the data.
 
 Then, we will use KMeans to segment customers into clusters. We will use **Elbow Method** and **Silhouette Plot** to find the optimal number of clusters which eventually is 10 clusters.
 
 <img src="./src/Picture/kmeans-elbow.png" alt="kmeans-elbow" width="75%">
-<img src="./src/Picture/kmeans-silhouette.png" alt="kmeans-silhouette" width="75%">
+
+![kmeans-silhouette](./src/Picture/kmeans-silhouette.png)
+
+Then, we label the clusters to customer profile table which not scaled yet, so we can see the customer profile of each cluster with the original scale to make it more interpretable. We will use this table to find the criteria of the clusters as an input and validation set for the Decision Tree.
 
 **Decision Tree**
 
@@ -492,7 +586,7 @@ Finally we can classify the customers into 10 clusters and explain the criteria 
 - **Cluster 3** : Bought less in amount, but bought often, and small ticket size, I think this is a cluster of regular customers who are likely to active and easily attracted by marketing campaign.
 - **Cluster 4** : Big spenders, and bought a lot of items both quantity, and diverse items, I guess this is a cluster of wholesale customers.
 - **Cluster 5** : Also Big spenders, and bought a lot of items both quantity, and diverse items, I also think this is a cluster of wholesaler but bigger than cluster 4, because they bought in more amount and more quantity.
-- **Cluster 7** : Big spenders, but not much as cluster 5, spent 50 - 155$ per month and bought once a month approximately, and also bought in low quantity. I guess this is a cluster of valuable regular customers that we should keep. Moreover, they're also the largest group among all clusters.
+- **Cluster 7** : Big spenders, but not much as cluster 5, spent 50 - 155£ per month and bought once a month approximately, and also bought in low quantity. I guess this is a cluster of valuable regular customers that we should keep. Moreover, they're also the largest group among all clusters.
 
 ... and so on.
 
