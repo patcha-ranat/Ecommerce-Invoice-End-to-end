@@ -5,8 +5,6 @@ Always click "⋮≡" adjacent to `README.md` at top left to show the table of c
 ```
 **End-to-end Data project** in the e-commerce and retail domain covering the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analytic skills, and also how to implement them in the real world utilizing Business and Marketing knowledge.
 
-*The project is in development . . .*
-
 ## **Context**
 
 It's crucial in nowadays to emphasize data existing and make the most use of it. **The project was created to practice and demonstrate the full process of data exploitation** covering setting up environments, ETL process, Web Scraping, Data Visualization, Machine Learning Model Development, Model Deployment and Monitoring using E-commerce data, and also extend to develop strategy and marketing campagin based on the data.
@@ -156,7 +154,7 @@ Then we will check table, and schema we executed by `setup.sql` file
 \dt or \d -- to see tables list
 \dn or \z -- to see schemas list
 ```
-if we see table and schema are corrected and showed, then importing csv to the Postgres database part is done.
+if we see table and schema are corrected and shown, then importing csv to the Postgres database part is done.
 
 <img src="./src/Picture/check-postgres.jpg">
 
@@ -304,7 +302,7 @@ The [`main.tf`](./terraform/main.tf) file, using some variables from [`variables
 - 1 Bigquery dataset
 - 1 Bigquery table
 
-To use terraform, you need to install Terraform in your local machine (+add to PATH), and have your google credentials (service account credentials) as a json file witin `"credentials"` directory in the same level of your working directory. Then, you can run terraform commands in your terminal **in your terraform working directory**.
+To use terraform, you need to install Terraform in your local machine (+add to PATH), and have your google credentials (service account credentials) as a json file within `"credentials"` directory in the same level of your working directory. Then, you can run terraform commands in your terminal **in your terraform working directory**.
 
 ```bash
 terraform init
@@ -390,9 +388,9 @@ For details of airflow connection configuring, we only create connections of Pos
     - And you have to install it in `requirements.txt` file, and also use the authentication via `GCSFileSystem` in the code instead of `google.cloud.storage.Client`.
 - In the DAG code, I used **overwriting** option for Native table in Bigquery. The append method is not covered in the project scope, but in production, append method is more preferred to preserve the old data.
     - External table always refer to the source file, so it's not possible to be appended, but manually append the data by itself with the code.
-- When I first load the parquet file to pre-defined schema in Bigquery, I encountered the error that the schema is not matched. I found out that the schema of parquet file is not the same as the schema in Bigquery with extra column "index level 0". So, the solution is to drop the column before saving to parquet file in Google Cloud Storage by using `df.to_parquet(..., index=False)`, just like `to_csv('filename.csv', index=True)`.
+- When I first load the parquet file to pre-defined schema in Bigquery, I encountered the error that the schema is not matched. I found out that the schema of parquet file is not the same as the schema in Bigquery with extra column "index level 0". So, the solution is to drop the column before saving to parquet file in Google Cloud Storage by using `df.to_parquet(..., index=False)`, just like `to_csv('filename.csv', index=False)`.
 
-    *(Even you load the `index=True` parquet file to check in pandas, it will not show the extra index column)*
+    *(Even you download the `index=True` parquet file to check in pandas, it will not show the extra index column)*
 </p>
 </details>
 
@@ -479,9 +477,9 @@ You can check the code in [**ecomm_eda.ipynb**](ecomm_eda.ipynb) file.
 
 ### 4.2 PowerBI Dashboard
 
-Since, the currently version of PowerBI has a bug of connecting to data warehouse, I will connect the data from local parquet file that loaded from data warehouse instead.
+Since, the current version of PowerBI has a bug of connecting to data warehouse, I will connect the data from local parquet file that loaded from data warehouse instead.
 
-We can conenct parquet file locally to Power BI:
+We can connect parquet file locally to Power BI:
 - Go to `Get Data` > Type in `"Parquet"` > `Connect` > use Basic option, and type in URL box by this: `file:///C:/path/to/data.parquet` > Then, click OK
 
 *Note: you have to change the path to your local path*
@@ -493,8 +491,8 @@ Now we can see the data in PowerBI, and do the data visualization.
 I won't go into detail of how to create the dashboard or each component, but you can download and check it yourself in [**ecomm_bi.pbix**](ecomm_bi.pbix) file.
 
 What worth to mention are:
-- I used **DAX** to calculate Growth Rate as a measure that would be quite complex for some people who are not familiar with PowerBI or DAX, but it used regular formula as: `(Current Context month - Previous month) / Previous month`. I used `CALCULATE` function to calculate the previous month value together with `ALLSELECTED`, and `DIVIDE` function to calculate the growth rate.
-- I linked variables to be able to **Drill Through** to other reports, making the dashboard more interactive, and more in-depth to analyze.
+- I used **DAX** to calculate Growth Rate as a measure that would be quite complex for some people who are not familiar with PowerBI or DAX, but it used just regular formula as: `(Sales in the Current Context month - Sales in the Previous month) / Sales in the Previous month`. I also used `CALCULATE` function to calculate the previous month value together with `ALLSELECTED`, and `DIVIDE` function to calculate the growth rate.
+- I linked variables between reports to be able to **Drill Through** to other reports, making the dashboard more interactive, and more in-depth to analyze.
 
 A little note for future myself:
 - **Dashboard is about Storytelling**, so it's better to have a story in mind before creating the dashboard. It's not just about the data, but how to arrange the story from the data.
