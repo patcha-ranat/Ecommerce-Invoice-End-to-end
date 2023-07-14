@@ -21,21 +21,37 @@ x-depends-on:
       condition: service_completed_successfully
 
 services:
-  postgres-local:
+  postgres-source:
     build:
       context: .
       dockerfile: postgres.Dockerfile
-    image: postgres
-    container_name: ${POSTGRES_CONTAINER}
+    image: postgres-source
+    container_name: postgres-container-source
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB_SOURCE}
     ports:
-      - ${POSTGRES_PORT}:${POSTGRES_PORT}
+      - 5432:${POSTGRES_PORT}
     restart: unless-stopped
-    volumes:
-      - ./src/pgdata:/var/lib/postgresql/data
+    # volumes:
+      # - ./src/pgdata_source:/var/lib/postgresql/data
+
+  postgres-target:
+    build:
+      context: .
+      dockerfile: postgres-target.Dockerfile
+    image: postgres-target
+    container_name: postgres-container-target
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB_TARGET}
+    ports:
+      - 5433:${POSTGRES_PORT}
+    restart: unless-stopped
+    # volumes:
+      # - ./src/pgdata_target:/var/lib/postgresql/data
 
   airflow-postgres:
     image: postgres:13
@@ -159,6 +175,6 @@ services:
     #   command: server /data --console-address ":9001"
 
 volumes:
-  pgdata:
-  minio-data-volume:
+  # pgdata_source:
+  # pgdata_target:
   postgres-db-volume:

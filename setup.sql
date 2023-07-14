@@ -1,4 +1,3 @@
--- CREATE DATABASE mydatabase;
 CREATE SCHEMA IF NOT EXISTS myschema;
 
 DROP TABLE IF EXISTS myschema.ecomm_invoice;
