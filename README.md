@@ -3,7 +3,7 @@
 ```text
 Always click "⋮≡" adjacent to `README.md` at top left to show the table of contents if you're lost.
 ```
-**End-to-end Data project** in the e-commerce and retail domain covering the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analytic skills, and also how to implement them in the real world utilizing Business and Marketing knowledge.
+**End-to-end Data project** in the e-commerce and retail industries covering the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analytic skills, and also how to implement them in the real world utilizing Business and Marketing knowledge.
 
 ## **Context**
 
@@ -646,6 +646,20 @@ We can interpret the result as:
 
 ### 5.5 Demand Forecasting
 
+In this section, we will use **Time Series Forecasting** technique to predict future values based on the past values of the data. we will use some input from the past as features to predict the future sales.
+
+In general, we use current features or features that already happened fed into the model to predict the sales as a target. But, the problem is, if we want to predict the sales of the next month, we don't have the features of the next month yet. So, we have to use the features of the past to predict the sales of the next month.
+
+Therefore, we have to perform feature engineering, transform data, create features to obtain the appropriate and effective features to predict the future sales. In this project, we will use **Lag Features** and **Rolling Window Statistics** to create features.
+
+But how can we know how lag of the features and how many rolling window statistics should we use? first we can use **Auto-correlation** to find the optimal lag value or candidates to be used as lag features. Then, we can use **Cross-Validation** to find the optimal number of rolling window and the best candidate of lag features.
+
+<img src="./src/Picture/autocorrelation.png">
+
+Additionally, I used **Fast Fourier Transform** to find seasonality of the data, but it results in no significant seasonality exists. So, it was discarded.
+
+<img src="./src/Picture/fourier.png" width="75%">
+
 *in development . . .*
 
 ### 5.6 Customer Churn Prediction
@@ -667,8 +681,10 @@ We can interpret the result as:
 ---
 *Development Note*
 
-- Currently, I'm working on developing Power BI Dashboard and researching for Model Development (not the algorithms of the ML model, but how to implement in business use cases).
+- Currently, I'm working on Demand Forecasting for inventory optimization. After this, the focus will be on model deployment and more on ETL Data Pipeline.
 
 - Model Deployment and Extending Data Lake and Data Warehouse to Microsoft Azure and AWS likely to be more focused than Model Development, but I'm waiting for a proper model to be a prototype.
+
+- Note New Idea: Deploy Airflow on VM (selected one cloud provider) to schedule ETL Data Pipeline and Model Training.
 
 ***Thank you for your reading. happy learning.***
