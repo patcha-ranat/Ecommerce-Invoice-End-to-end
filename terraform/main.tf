@@ -1,13 +1,17 @@
 terraform {
-  required_version = ">= 1.0"
+  required_version = "1.5.3"
   backend "local" {}  # Can change from "local" to "gcs" (for google) or "s3" (for aws), if you would like to preserve your tf-state online
   required_providers {
     google = {
       source  = "hashicorp/google"
     }
+    aws = {
+      source  = "hashicorp/aws"
+    }
   }
 }
 
+# google cloud platform: GCP
 provider "google" {
   credentials = file("../credentials/gcs_credentials.json")
   project     = var.project
@@ -111,3 +115,29 @@ resource "google_bigquery_table" "table" {
     ]
 EOF
 }
+
+# Amazon Web Services: AWS
+
+provider "aws" {
+  region = "ap-southeast-1"
+  access_key = var.aws_access_key
+  secret_key = var.aws_secret_key
+}
+
+resource "aws_s3_bucket" "aws_bucket" {
+  bucket = "ecomm-invoice-bucket-aws"
+  
+  force_destroy = true
+  # versioning {
+  #   enabled = true
+  # }
+}
+
+# resource "aws_redshift_cluster" "aws_warehouse" {
+#   cluster_identifier = "tf-redshift-cluster"
+#   database_name      = "mydb"
+#   master_username    = "admin"
+#   master_password    = "1234"
+#   node_type          = "dc1.large"
+#   cluster_type       = "single-node"
+# }
