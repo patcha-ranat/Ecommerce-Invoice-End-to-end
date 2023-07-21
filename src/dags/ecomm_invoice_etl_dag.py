@@ -14,7 +14,8 @@ import shutil
 from google.cloud import storage
 import logging
 
-from transform_load import clean_data, load_data, clear_staging_area
+from transform_load import clean_data_google, load_data_google, clear_staging_area
+from alternative_cloud_etl import extract_api_aws, extract_url_aws, extract_database_aws, clean_aws
 
 # get variables from .env file
 project_id = os.environ["PROJECT_ID"]
@@ -24,8 +25,11 @@ table_name = os.environ["TABLE_NAME"]
 credentials_path = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
 load_target_file = "ecomm_invoice_transaction.parquet"
 
+aws_credentials_path = os.environ["AWS_CREDENTIALS_PATH"]
+aws_bucket = os.environ["AWS_BUCKET"]
 
-def _extract_data_from_url():
+
+def extract_url_google():
     # retrieve data from url
     url = "https://raw.githubusercontent.com/Patcharanat/ecommerce-invoice/master/data/cleaned_data.csv"
     response = requests.get(url)
@@ -45,7 +49,7 @@ def _extract_data_from_url():
     logging.info(f"File {destination_blob_name} is stored.")
 
 
-def _extract_data_from_database():
+def extract_database_google():
     # initiate connection
     postgres_hook = PostgresHook(
         postgres_conn_id="postgres-local",
@@ -77,8 +81,10 @@ def _extract_data_from_database():
     cursor.close()
     conn.close()
 
+    logging.info(f"Completed extracting data from postgres database loaded to {destination_blob_name}")
 
-def _extract_data_from_api():
+
+def extract_api_google():
     # authenticate and download data from Kaggle API
     api = KaggleApi()
     api.authenticate()
@@ -100,6 +106,7 @@ def _extract_data_from_api():
 
     # remove created csv file from local
     os.remove(zip_path)
+    logging.info(f"Completed extracting data from API loaded to {destination_blob_name}")
 
 
 default_args = {
@@ -116,24 +123,24 @@ with DAG(
     schedule_interval=None # or '@daily'
     ) as dag:
     
-    extract_data_from_url = PythonOperator(
-        task_id='extract_data_from_url',
-        python_callable=_extract_data_from_url
+    extract_data_url_google = PythonOperator(
+        task_id='extract_data_url_google',
+        python_callable=extract_url_google
     )
 
-    extract_data_from_database = PythonOperator(
-        task_id='extract_data_from_database',
-        python_callable=_extract_data_from_database
+    extract_data_database_google = PythonOperator(
+        task_id='extract_data_database_google',
+        python_callable=extract_database_google
     )
 
-    extract_data_from_api = PythonOperator(
+    extract_data_api_google = PythonOperator(
         task_id='extract_data_from_api',
-        python_callable=_extract_data_from_api
+        python_callable=extract_api_google
     )
 
-    transform_data_from_data_lake = PythonOperator(
-        task_id="transform_data_from_data_lake",
-        python_callable=clean_data,
+    transform_data_google = PythonOperator(
+        task_id="transform_data_google",
+        python_callable=clean_data_google,
         op_kwargs={
             "source_file": "data_api_uncleaned.csv",
             "destination_file": load_target_file,
@@ -145,7 +152,7 @@ with DAG(
 
     load_to_bigquery = PythonOperator(
         task_id="load_to_bigquery",
-        python_callable=load_data,
+        python_callable=load_data_google,
         op_kwargs={
             "project_id": project_id,
             "bucket_name": bucket_name,
@@ -181,7 +188,33 @@ with DAG(
     #     }
     # )
 
-    [extract_data_from_api, extract_data_from_database, extract_data_from_url] >> transform_data_from_data_lake
-    transform_data_from_data_lake >> [load_to_bigquery, load_to_bigquery_external] 
+    extract_data_url_aws = PythonOperator(
+        task_id="extract_data_url_aws",
+        python_callable=extract_url_aws
+    )
+
+    extract_data_database_aws = PythonOperator(
+        task_id="extract_data_database_aws",
+        python_callable=extract_database_aws
+    )
+
+    extract_data_api_aws = PythonOperator(
+        task_id="extract_to_aws",
+        python_callable=extract_api_aws
+    )
+
+    transform_data_aws = PythonOperator()
+
+    # load_to_redshift = PythonOperator()
+
+    # clear_staging_area_s3 = PythonOperator()
+
+    # define task dependencies
+
+    [extract_data_url_google, extract_data_database_google, extract_data_api_google] >> transform_data_google
+    transform_data_google >> [load_to_bigquery, load_to_bigquery_external]
     # [load_to_bigquery, load_to_bigquery_external] >> clear_staging_area_gcs
+
+    [extract_data_api_aws, extract_data_database_aws, extract_data_url_aws] >> transform_data_aws
+    # transform_data_aws >> load_to_redshift >> clear_staging_area_s3
     

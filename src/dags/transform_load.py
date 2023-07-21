@@ -5,7 +5,7 @@ import gcsfs
 from google.cloud import bigquery
 
 
-def clean_data(source_file, destination_file, project_id, bucket_name, credentials_path):
+def clean_data_google(source_file, destination_file, project_id, bucket_name, credentials_path):
     
     # Instantiate a GCS client with gcsfs to be able to handle the file with pandas
     fs = gcsfs.GCSFileSystem(project=project_id, token=credentials_path)
@@ -46,7 +46,7 @@ def clean_data(source_file, destination_file, project_id, bucket_name, credentia
     os.remove(destination_file)
 
 
-def load_data(project_id, bucket_name, dataset_name, table_name, credentials_path):
+def load_data_google(project_id, bucket_name, dataset_name, table_name, credentials_path):
 
     # Construct a BigQuery client object.
     client = bigquery.Client.from_service_account_json(credentials_path)
