@@ -418,6 +418,32 @@ Most of time, you don't write the DAGs in one time and test once it's done, you 
 
 **Once the ETL DAG worked successfully, the data engineering part is finished.**
 
+### **Step to Reproduce Virtualization for testing**
+1. Apply Terraform to create the infrastructure
+    ```hcl
+    terraform plan
+
+    terraform apply
+    ```
+2. Start microservices with docker-compose
+    ```bash
+    docker compose build
+
+    docker compose up -d
+    ```
+3. Trigger the DAG in Airflow UI
+    - go to `localhost:8080` via web browser
+4. Check the data in Data Lake and Data Warehouse
+    - login to Cloud Console
+5. Stop microservices with docker-compose
+    ```bash
+    docker compose down -v
+    ```
+6. Destroy the infrastructure with Terraform
+    ```hcl
+    terraform destroy
+    ```
+
 ## 3. Web Scraping
 
 This part is not currently in development. I will update the progress later. But, you can check the concept and the old written code in [web-scraping](https://github.com/Patcharanat/ecommerce-invoice/tree/master/web-scraping) folder.
