@@ -6,7 +6,7 @@ import boto3
 import pandas as pd
 import requests
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-import s3fs
+import awswrangler as wr
 import logging
 
 aws_credentials_path = os.environ["AWS_CREDENTIALS_PATH"]
@@ -42,21 +42,23 @@ def extract_url_aws():
 def extract_database_aws():
     # initiate connection
     postgres_hook = PostgresHook(
-        postgres_conn_id="postgres-local",
+        postgres_conn_id="postgres-source",
         schema="mydatabase"
     )
     conn = postgres_hook.get_conn()
     cursor = conn.cursor()
 
     # Define the SQL query to extract data
-    query = "SELECT * FROM ecomm_invoice"
+    query = "SELECT * FROM myschema.ecomm_invoice"
 
     # specify filename
-    csv_filename = "unloaded_data.csv"
+    csv_file = "/opt/airflow/data/unloaded_data.csv"
 
     # Define the COPY command with the query, CSV format, and headers
-    cursor.execute(f"COPY ({query}) TO {csv_filename} WITH CSV HEADER")
+    copy_command = f"COPY ({query}) TO STDOUT WITH CSV HEADER"
 
+    with open(csv_file, "w") as f:
+        cursor.copy_expert(copy_command, file=f)
     # close cursor and connection
     cursor.close()
     conn.close()
@@ -74,11 +76,11 @@ def extract_database_aws():
                         aws_access_key_id=_aws_access_key_id,
                         aws_secret_access_key=_aws_secret_access_key)
     
-    with open(csv_filename, "rb") as f:
+    with open(f"{csv_file}", "rb") as f:
         s3.upload_fileobj(f, aws_bucket, object_name)
     
-    os.remove(csv_filename)
-    logging(f"Completed extracting data from postgres database loaded to {object_name}")
+    os.remove(csv_file)
+    logging.info(f"Completed extracting data from postgres database loaded to {object_name}")
 
 
 def extract_api_aws():
@@ -104,45 +106,55 @@ def extract_api_aws():
 
     object_name = 'data_api_uncleaned.csv'
     s3.upload_file(extracted_file_path, aws_bucket, object_name)
-    os.remove(zip_path)
+    # in case not remove before google task load to GCS
+    # os.remove(zip_path)
     logging.info(f"Completed extracting data from API loaded to {object_name}")
 
 
-# def clean_aws():
-#     # Instantiate a GCS client with gcsfs to be able to handle the file with pandas
-#     fs = gcsfs.GCSFileSystem(project=project_id, token=credentials_path)
+def clean_aws(bucket_name, object_name, destination_file):
+    # retrieve credentials
+    key = pd.read_csv(aws_credentials_path)
+    _aws_access_key_id = key["Access key ID"][0]
+    _aws_secret_access_key = key["Secret access key"][0]
 
-#     # Read the data file using pandas
-#     with fs.open(f"{bucket_name}/{source_file}") as file:
-#         df = pd.read_csv(file, encoding='cp1252')
+    # Authenticate by session
+    session = boto3.Session(
+        aws_access_key_id = _aws_access_key_id,
+        aws_secret_access_key = _aws_secret_access_key
+    )
+    
+    df = wr.s3.read_csv(path=f"s3://{bucket_name}/{object_name}",
+                        boto3_session=session,
+                        encoding='cp1252')
 
-#     # Clean the data
-#     df['Description'] = df['Description'].fillna('No Description')
-#     df['CustomerID'] = df['CustomerID'].fillna(0)
-#     df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])
-#     df['total_spend'] = df['Quantity'] * df['UnitPrice']
+    # Clean the data with old script
+    df['Description'] = df['Description'].fillna('No Description')
+    df['CustomerID'] = df['CustomerID'].fillna(0)
+    df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])
+    df['total_spend'] = df['Quantity'] * df['UnitPrice']
 
-#     # Convert the data types
-#     df['InvoiceNo'] = df['InvoiceNo'].astype(str)
-#     df['StockCode'] = df['StockCode'].astype(str)
-#     df['Description'] = df['Description'].astype(str)
-#     df['CustomerID'] = df['CustomerID'].astype(float).astype(int)
-#     df['Country'] = df['Country'].astype(str)
-#     df['total_spend'] = df['total_spend'].astype(float)
+    # Convert the data types
+    df['InvoiceNo'] = df['InvoiceNo'].astype(str)
+    df['StockCode'] = df['StockCode'].astype(str)
+    df['Description'] = df['Description'].astype(str)
+    df['CustomerID'] = df['CustomerID'].astype(float).astype(int)
+    df['Country'] = df['Country'].astype(str)
+    df['total_spend'] = df['total_spend'].astype(float)
 
-#     # Replace several descriptions with the most frequent description for each stock code
-#     df['StockCode'] = df['StockCode'].str.upper()
-#     most_freq = df.groupby('StockCode')['Description'].agg(lambda x: x.value_counts().idxmax()).reset_index()
-#     columns_index = df.columns
-#     df = df.drop(columns=['Description'])
-#     df = pd.merge(df, most_freq, on='StockCode', how='left')
-#     df = df.reindex(columns=columns_index)
+    # Replace several descriptions with the most frequent description for each stock code
+    df['StockCode'] = df['StockCode'].str.upper()
+    most_freq = df.groupby('StockCode')['Description'].agg(lambda x: x.value_counts().idxmax()).reset_index()
+    columns_index = df.columns
+    df = df.drop(columns=['Description'])
+    df = pd.merge(df, most_freq, on='StockCode', how='left')
+    df = df.reindex(columns=columns_index)
 
-#     # Write the cleaned data to a new parquet file
-#     df.to_parquet(destination_file, index=False)
+    # Upload the cleaned data to S3 Staging Area
+    df.to_parquet(destination_file, index=False)
+    s3 = boto3.client('s3',
+                      aws_access_key_id=_aws_access_key_id,
+                      aws_secret_access_key=_aws_secret_access_key)
+    s3.upload_file(destination_file, bucket_name, f"staging_area/{destination_file}")
 
-#     # Upload the cleaned data to GCS
-#     fs.put(destination_file, f"{bucket_name}/staging_area/{destination_file}")
-
-#     # Optionally, delete the local downloaded data file
-#     os.remove(destination_file)
+def load_data_redshift():
+    pass

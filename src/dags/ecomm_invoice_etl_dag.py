@@ -1,8 +1,9 @@
 from airflow import DAG
+# from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-# from airflow.operators.dummy import DummyOperator
 from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateExternalTableOperator
+from airflow.providers.amazon.aws.transfers.s3_to_redshift import S3ToRedshiftOperator
 from datetime import datetime
 from airflow.utils import timezone
 from datetime import timedelta
@@ -19,7 +20,7 @@ from alternative_cloud_etl import extract_api_aws, extract_url_aws, extract_data
 
 # get variables from .env file
 project_id = os.environ["PROJECT_ID"]
-bucket_name = os.environ["BUCKET_NAME"]
+gcp_bucket = os.environ["BUCKET_NAME"]
 dataset_name = os.environ["DATASET_NAME"]
 table_name = os.environ["TABLE_NAME"]
 credentials_path = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
@@ -40,7 +41,7 @@ def extract_url_google():
 
     # write data to csv file created in GCS
     storage_client = storage.Client.from_service_account_json(credentials_path)
-    bucket = storage_client.bucket(bucket_name)
+    bucket = storage_client.bucket(gcp_bucket)
     blob = bucket.blob(destination_blob_name)
 
     with blob.open("w") as file:
@@ -52,14 +53,14 @@ def extract_url_google():
 def extract_database_google():
     # initiate connection
     postgres_hook = PostgresHook(
-        postgres_conn_id="postgres-local",
+        postgres_conn_id="postgres-source",
         schema="mydatabase"
     )
     conn = postgres_hook.get_conn()
     cursor = conn.cursor()
 
     # Define the SQL query to extract data
-    query = "SELECT * FROM ecomm_invoice"
+    query = "SELECT * FROM myschema.ecomm_invoice"
 
     # Define the COPY command with the query, CSV format, and headers
     copy_command = f"COPY ({query}) TO STDOUT WITH CSV HEADER"
@@ -69,7 +70,7 @@ def extract_database_google():
 
     # upload to GCS
     storage_client = storage.Client.from_service_account_json(credentials_path)
-    bucket = storage_client.bucket(bucket_name)
+    bucket = storage_client.bucket(gcp_bucket)
     blob = bucket.blob(destination_blob_name)
 
     # Open the file in write mode
@@ -100,12 +101,13 @@ def extract_api_google():
     destination_blob_name = "data_api_uncleaned.csv"
 
     storage_client = storage.Client.from_service_account_json(credentials_path)
-    bucket = storage_client.bucket(bucket_name)
+    bucket = storage_client.bucket(gcp_bucket)
     blob = bucket.blob(destination_blob_name)
     blob.upload_from_filename(extracted_file_path)
 
     # remove created csv file from local
-    os.remove(zip_path)
+    # In order to not remove before aws load to s3
+    # os.remove(zip_path)
     logging.info(f"Completed extracting data from API loaded to {destination_blob_name}")
 
 
@@ -134,7 +136,7 @@ with DAG(
     )
 
     extract_data_api_google = PythonOperator(
-        task_id='extract_data_from_api',
+        task_id='extract_data_api_google',
         python_callable=extract_api_google
     )
 
@@ -145,7 +147,7 @@ with DAG(
             "source_file": "data_api_uncleaned.csv",
             "destination_file": load_target_file,
             "project_id": project_id,
-            "bucket_name": bucket_name,
+            "gcp_bucket": gcp_bucket,
             "credentials_path": credentials_path
         }
     )
@@ -155,7 +157,7 @@ with DAG(
         python_callable=load_data_google,
         op_kwargs={
             "project_id": project_id,
-            "bucket_name": bucket_name,
+            "gcp_bucket": gcp_bucket,
             "dataset_name": dataset_name,
             "table_name": table_name,
             "credentials_path": credentials_path
@@ -172,7 +174,7 @@ with DAG(
             },
             "externalDataConfiguration": {
                 "sourceFormat": "PARQUET",
-                "sourceUris": [f"gs://{bucket_name}/staging_area/{load_target_file}"],
+                "sourceUris": [f"gs://{gcp_bucket}/staging_area/{load_target_file}"],
             },
         },
         gcp_conn_id="my_gcp_conn_id",
@@ -182,7 +184,7 @@ with DAG(
     #     task_id="clear_staging_area_gcs",
     #     python_callable=clear_staging_area,
     #     op_kwargs={
-    #         "bucket_name": bucket_name,
+    #         "gcp_bucket": gcp_bucket,
     #         "blob_name": f"staging_area/{load_target_file}",
     #         "credentials_path": credentials_path
     #     }
@@ -199,13 +201,38 @@ with DAG(
     )
 
     extract_data_api_aws = PythonOperator(
-        task_id="extract_to_aws",
+        task_id="extract_data_api_aws",
         python_callable=extract_api_aws
     )
 
-    transform_data_aws = PythonOperator()
+    transform_data_aws = PythonOperator(
+        task_id="transform_data_aws",
+        python_callable=clean_aws,
+        op_kwargs={
+            "gcp_bucket": aws_bucket,
+            "object_name": "data_api_uncleaned.csv",
+            "destination_file": load_target_file,
+        }
+    )
 
-    # load_to_redshift = PythonOperator()
+    load_to_redshift = PythonOperator()
+
+    # Only applicable with CSV files
+    # s3_to_redshift = S3ToRedshiftOperator(
+    #     task_id='s3_to_redshift',
+    #     schema='public',
+    #     table='ecomm_invoice_transaction',
+    #     s3_bucket=aws_bucket,
+    #     s3_key='staging_area/ecomm_invoice_transaction.parquet',
+    #     redshift_conn_id='redshift_default',
+    #     aws_conn_id='aws_default',
+    #     copy_options=[
+    #         "DELIMITER AS ','"
+    #     ],
+    #     method='REPLACE'
+    # )
+
+    load_to_redshift_external = PythonOperator()
 
     # clear_staging_area_s3 = PythonOperator()
 
@@ -216,5 +243,6 @@ with DAG(
     # [load_to_bigquery, load_to_bigquery_external] >> clear_staging_area_gcs
 
     [extract_data_api_aws, extract_data_database_aws, extract_data_url_aws] >> transform_data_aws
+    transform_data_aws >> [load_to_redshift, load_to_redshift_external]
     # transform_data_aws >> load_to_redshift >> clear_staging_area_s3
     

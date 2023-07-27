@@ -17,3 +17,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY credentials/kaggle.json /home/airflow/.kaggle/
 
 COPY credentials/gcs_credentials.json .
+
+COPY credentials/ecomm-invoice-kde-aws-iam_accessKeys.csv .
