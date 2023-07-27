@@ -37,7 +37,7 @@ variable "TABLE_ID" {
 # } -> use local instead
 
 # aws IAM
-# retrieve from `secrets.tfvars`
+# retrieve from `terraform.tfvars`
 variable "aws_access_key" {
   type = string
   description = "AWS access key"
@@ -45,4 +45,73 @@ variable "aws_access_key" {
 variable "aws_secret_key" {
   type = string
   description = "AWS secret key"
+}
+
+# serverless variables
+variable "redshift_serverless_namespace_name" {
+  type        = string
+  description = "Redshift Serverless Namespace Name"
+  default = "ecomm-invoice-namespace"
+}
+
+variable "redshift_serverless_database_name" { 
+  type        = string
+  description = "Redshift Serverless Database Name"
+  default = "mydb"
+}
+
+variable "redshift_serverless_admin_username" {
+  type        = string
+  description = "Redshift Serverless Admin Username"
+  default = "admin"
+}
+
+variable "redshift_serverless_admin_password" { 
+  type        = string
+  description = "Redshift Serverless Admin Password"
+  default = "Admin123"
+}
+
+variable "redshift_serverless_workgroup_name" {
+  type        = string
+  description = "Redshift Serverless Workgroup Name"
+  default = "ecomm-invoice-workgroup"
+}
+
+variable "redshift_serverless_base_capacity" {
+  type        = number
+  description = "Redshift Serverless Base Capacity"
+  default     = 32 // 32 RPUs to 512 RPUs in units of 8 (32,40,48...512)
+}
+
+variable "redshift_serverless_publicly_accessible" {
+  type        = bool
+  description = "Set the Redshift Serverless to be Publicly Accessible"
+  default     = false
+}
+
+# network for redshift serverless
+variable "redshift_serverless_vpc_cidr" {
+  type        = string
+  description = "VPC IPv4 CIDR"
+}
+
+variable "redshift_serverless_subnet_1_cidr" {
+  type        = string
+  description = "IPv4 CIDR for Redshift subnet 1"
+}
+
+variable "redshift_serverless_subnet_2_cidr" {
+  type        = string
+  description = "IPv4 CIDR for Redshift subnet 2"
+}
+
+variable "redshift_serverless_subnet_3_cidr" {
+  type        = string
+  description = "IPv4 CIDR for Redshift subnet 3"
+}
+
+variable "app_environment" {
+  type=string
+  description="Environment for the application"
 }
