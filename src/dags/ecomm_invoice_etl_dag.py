@@ -16,7 +16,7 @@ from google.cloud import storage
 import logging
 
 from transform_load import clean_data_google, load_data_google, clear_staging_area
-from alternative_cloud_etl import extract_api_aws, extract_url_aws, extract_database_aws, clean_aws
+from alternative_cloud_etl import extract_api_aws, extract_url_aws, extract_database_aws, clean_aws, load_data_aws
 
 # get variables from .env file
 project_id = os.environ["PROJECT_ID"]
@@ -147,7 +147,7 @@ with DAG(
             "source_file": "data_api_uncleaned.csv",
             "destination_file": load_target_file,
             "project_id": project_id,
-            "gcp_bucket": gcp_bucket,
+            "bucket_name": gcp_bucket,
             "credentials_path": credentials_path
         }
     )
@@ -157,7 +157,7 @@ with DAG(
         python_callable=load_data_google,
         op_kwargs={
             "project_id": project_id,
-            "gcp_bucket": gcp_bucket,
+            "bucket_name": gcp_bucket,
             "dataset_name": dataset_name,
             "table_name": table_name,
             "credentials_path": credentials_path
@@ -209,13 +209,16 @@ with DAG(
         task_id="transform_data_aws",
         python_callable=clean_aws,
         op_kwargs={
-            "gcp_bucket": aws_bucket,
+            "bucket_name": aws_bucket,
             "object_name": "data_api_uncleaned.csv",
             "destination_file": load_target_file,
         }
     )
 
-    load_to_redshift = PythonOperator()
+    # load_to_redshift = PythonOperator(
+    #     task_id="load_to_redshift",
+    #     python_callable=load_data_aws,
+    # )
 
     # Only applicable with CSV files
     # s3_to_redshift = S3ToRedshiftOperator(
@@ -232,7 +235,7 @@ with DAG(
     #     method='REPLACE'
     # )
 
-    load_to_redshift_external = PythonOperator()
+    # load_to_redshift_external = PythonOperator()
 
     # clear_staging_area_s3 = PythonOperator()
 
@@ -243,6 +246,5 @@ with DAG(
     # [load_to_bigquery, load_to_bigquery_external] >> clear_staging_area_gcs
 
     [extract_data_api_aws, extract_data_database_aws, extract_data_url_aws] >> transform_data_aws
-    transform_data_aws >> [load_to_redshift, load_to_redshift_external]
     # transform_data_aws >> load_to_redshift >> clear_staging_area_s3
     

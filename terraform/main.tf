@@ -316,13 +316,13 @@ resource "aws_redshiftserverless_workgroup" "serverless" {
 #   node_type                  = "dc1.large"
 #   cluster_type               = "single-node"
 #   # number_of_nodes            = 2
-#   cluster_subnet_group_name  = "your-subnet-group"  # Create this separately or use an existing one.
+#   cluster_subnet_group_name  = "ecomm-invoice-subnet-group"  # Create this separately or use an existing one.
 #   publicly_accessible        = false
 
 #   # Database settings
-#   database_name              = "my-database"
+#   database_name              = "mydb"
 #   master_username            = "admin"
-#   master_password            = "1234"
+#   master_password            = "Admin123"
 
 #   # Enable automatic backups and set retention period (in days)
 #   # automated_snapshot_retention_period = 7

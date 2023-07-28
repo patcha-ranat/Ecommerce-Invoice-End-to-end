@@ -8,9 +8,12 @@ import requests
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 import awswrangler as wr
 import logging
+import psycopg2
 
 aws_credentials_path = os.environ["AWS_CREDENTIALS_PATH"]
 aws_bucket = os.environ["AWS_BUCKET"]
+_redshift_host = ''
+_redshift_role_arn = ''
 
 def extract_url_aws():
     url = "https://raw.githubusercontent.com/Patcharanat/ecommerce-invoice/master/data/cleaned_data.csv"
@@ -156,5 +159,80 @@ def clean_aws(bucket_name, object_name, destination_file):
                       aws_secret_access_key=_aws_secret_access_key)
     s3.upload_file(destination_file, bucket_name, f"staging_area/{destination_file}")
 
-def load_data_redshift():
+def load_data_aws():
+    # # retrieve credentials
+    # key = pd.read_csv(aws_credentials_path)
+    # _aws_access_key_id = key["Access key ID"][0]
+    # _aws_secret_access_key = key["Secret access key"][0]
+
+    # # authenticate and upload to S3
+    # s3 = boto3.client('s3',
+    #                     aws_access_key_id=_aws_access_key_id,
+    #                     aws_secret_access_key=_aws_secret_access_key)
+    
+    object_key = "staging_area/ecomm_invoice_transaction.parquet"
+
+    # Configure your Redshift connection details
+    redshift_host = _redshift_host # need to change everytime new created
+    redshift_dbname = 'mydb'
+    redshift_user = 'admin'
+    redshift_password = 'Admin123'
+    redshift_port = '5439'
+
+    # Establish a connection to Redshift
+    conn = psycopg2.connect(
+        host        = redshift_host,
+        dbname      = redshift_dbname,
+        user        = redshift_user,
+        password    = redshift_password,
+        port        = redshift_port
+    )
+    cur = conn.cursor()
+
+    # # Use boto3 to read a sample of the file from S3 into a DataFrame for creating table dynamically
+    # s3 = boto3.client('s3', aws_access_key_id=_aws_access_key_id, aws_secret_access_key=_aws_secret_access_key)
+    # file_obj = s3.get_object(Bucket=aws_bucket, Key=object_key)
+    # df_sample = pd.read_parquet(file_obj['Body'], nrows=10)  # Read the first 10 rows as a sample
+
+    # # Infer the column names and data types from the DataFrame sample
+    # column_names = df_sample.columns.tolist()
+    # column_data_types = {col: str(df_sample.dtypes[col]) for col in column_names}
+
+    # # Generate the CREATE TABLE SQL statement dynamically
+    # create_table_sql = f"CREATE TABLE IF NOT EXISTS my_dynamic_table ("
+    # for col_name, data_type in column_data_types.items():
+    #     create_table_sql += f"{col_name} {data_type}, "
+    # create_table_sql = create_table_sql.rstrip(', ') + ");"
+
+    # Create the target table in Redshift (if it doesn't exist)
+    create_table_sql = """
+    CREATE TABLE IF NOT EXISTS ecomm_invoice_transaction (
+        InvoiceNo     STRING,
+        StockCode     STRING,
+        Description   STRING,
+        Quantity      INTEGER,
+        InvoiceDate   TIMESTAMP,
+        UnitPrice     FLOAT,
+        CustomerID    INTEGER,
+        Country       STRING,
+        total_spend   FLOAT
+    );
+    """
+    cur.execute(create_table_sql)
+    conn.commit()
+
+    # Load the data from the DataFrame into the Redshift table
+    copy_command = f"""
+                    COPY ecomm_invoice_transaction FROM 's3://{aws_bucket}/{object_key}'
+                    IAM_ROLE '{_redshift_role_arn}'
+                    FORMAT AS PARQUET;
+                    """
+    
+    cur.execute(copy_command)
+    conn.commit()
+
+    # Close the connection
+    conn.close()
+
+if __name__ == "__main__":
     pass
