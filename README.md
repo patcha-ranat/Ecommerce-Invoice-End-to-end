@@ -30,10 +30,12 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
 - Data Lake & Staging Area
     - Google Cloud Storage
     
-    *(Extend to Amazon S3 and Azure Blob Storage in the future)*
+    *(Extend to Azure Blob Storage in the future)*
 - Data Warehouse
     - Postgres Database
     - Bigquery (External and Native Tables)
+    
+    *(Extend to Azure Synapse in the future)*
 - Orchestrator
     - Airflow
 - Virtualization and Infrastucture management
@@ -80,6 +82,7 @@ This command will build all containers we specified in `docker-compose.yml` file
 - Copying sql file (`setup.sql`) to `docker-entrypoint-initdb.d` to be executed when we initialize container.
 - Copying `cleaned_data.csv` file to the postgres container.
 - Creating schema and table with `cleaned_data.csv` by executing `setup.sql` file.
+- Replicating postgres container to simulate another database for data warehouse with empty table using `postgres-target.Dockerfile`, and `target.sql` file.
 - Installing `requirements.txt` for airflow's container to be able to use libraries we needed in DAGs.
 - Add a Kaggle credentials file: `kaggle.json` (in this case we use Kaggle API) to make API usable.
 
@@ -91,15 +94,19 @@ This command will build all containers we specified in `docker-compose.yml` file
 <details>
 <p>
 
-First, you need to simulate postgres database by creating a container with postgres image. you will need to copy `cleaned_data.csv` file into the postgres container. Then, you need to create a database and a schema, and a table with [`setup.sql`](setup.sql) file, and also configure [`.env`](.env) file, like username, password, and database. The file that will do the task is [`postgres.Dockerfile`](postgres.Dockerfile)
+First, you need to simulate postgres database by creating a container with postgres image. you will need to copy `cleaned_data.csv` file into the postgres container. Then, you need to create a database and a schema, and a table with [`setup.sql`](setup.sql) file, and also configure [`.env`](.env) file, like username, password, and database. The file that will do the copying file task is [`postgres.Dockerfile`](postgres.Dockerfile)
+
+**(Update)** we add more postgres container to simulate another database for data warehouse. The files that are relevant to this task are [`postgres-target.Dockerfile`](postgres-target.Dockerfile) to build image for the container and [`target.sql`](target.sql) to setup empty table. In this database, we will use different database name and different schema for testing how to handle with multiple databases.
 
 Then, you need to create a container with airflow image. You will need to copy `kaggle.json` file into the container (webserver, and scheduler). Then, you need to install libraries we needed in DAGs by **"pip install"**[`requirements.txt`](requirements.txt) file within the containers. The file that will do the task is [`airflow.Dockerfile`](airflow.Dockerfile)
 
-To easily run multiple docker containers, you will need docker compose. The file that will do the task is [`docker-compose.yml`](docker-compose.yml), which will build all containers we specified in `build` and `context` parts which run different dockerfile for different containers.
+Then, you need to create a container with airflow image. You will need to copy `kaggle.json` file into the container (webserver, and scheduler). Then, you need to install libraries we needed in DAGs by **"pip install"**[`requirements.txt`](requirements.txt) file within the containers. The file that will do the task is [`airflow.Dockerfile`](airflow.Dockerfile)
+
+To easily run multiple docker containers or running microservices, you will need docker compose. The file that will do the task is [`docker-compose.yml`](docker-compose.yml), which will `build` all the images for containers we specified in `build` and `context` parts resulting in running different `.Dockerfile` for different containers.
 
 In airflow official site, you will find template to run airflow as `docker-compose.yml` you can use it as reference and change it to fit your needs, like add postgres section, and remove unnecessary part that can causes running out of memory making you unable to run docker containers successfully.
 
-If you're new to container, you will be confused a little with using path. please be careful where you mount the files to, unless it will bug.
+If you're new to container, you will be confused a little with using path. please be careful with paths where you mount the files to.
 </p>
 </details>
 
@@ -120,8 +127,14 @@ docker ps
 
 ### **Step 1.3: Checking if all Dockerfiles correctly executed**
 What to be checked are
-- Is the data table in postgres database created correctly?
-- Is the `kaggle.json` credentials file imported?
+- Is the data table in postgres database as a source created correctly?
+    - data loaded from `cleaned_data.csv` and using the right schema?
+- Is all the credentials file imported?
+    - `kaggle.json`
+    - `gcs_credentials.json`
+    - `ecomm-invoice-kde-aws-iam_accessKeys.csv`
+- Is the data table in postgres database as a target created correctly?
+    - empty table with the right schema?
 
 Get into command-line or bash of container we specified.
 ```bash
@@ -143,7 +156,7 @@ you should see the data csv file and `setup.sql` file in the directory.
 What you should check more is that credentials file: `kaggle.json` correctly imported in airflow's scheduler and webservice containers.
 
 ### **Step 1.4: Checking Data in a Database**
-Access to postgres container, and then access database to check if csv file copied into table.
+Access to both postgres containers, and then access database to check if csv file copied into table.
 ```bash
 psql -U postgres -d mydatabase
 ```
@@ -165,7 +178,7 @@ if not, these can be issues
 ```bash
 SET search_path TO <myschema>;
 ```
-to set only in current session.
+to set only in current session. *(reccomended)*
 ```bash
 ALTER DATABASE <mydatabase> SET search_path TO <myschema>; 
 ```
@@ -178,6 +191,9 @@ Then exit from all bash
 \q
 exit
 ```
+
+***Note:** In my lastest update adding another postgres databse to simulate data warehouse, I found that specifying image name in `docker-compose.ymal` file is crucial when we pulling the same image but using in different container, because it will `build` with the wrong `Dockerfile` and cause the some issues, like build postgres database target with `postgres.Dockerfile` instead of `postgres-target.Dockerfile` which is not what we want.*
+
 ### **Step 1.5: Exiting**
 Don't forget to remove all image and containers when you're done.
 ```bash
@@ -295,7 +311,7 @@ As you can see it's quite inconvenient that we have to create all of these resou
 
 **Terraform**
 
-We can achieve creating the bucket and the warehouse by **"Terraform"**, which is a better way to create and manage cloud resources. you can see the code in `terraform` folder, consists of [main.tf](terraform/main.tf) and [variables.tf](terraform/variables.tf). Terraform make it easier to create and delete or managing the resources in this demonstration with a few bash commands.
+We can achieve creating the bucket and the warehouse by **"Terraform"**, which is a better way to create and manage cloud resources reducing error when reproduce the process and proper for production stage. you can see the code in `terraform` folder, consists of [main.tf](terraform/main.tf) and [variables.tf](terraform/variables.tf). Terraform make it easier to create and delete or managing the resources in this demonstration with a few bash commands.
 
 The [`main.tf`](./terraform/main.tf) file, using some variables from [`variables.tf`](./terraform/variables.tf) file, will produce the following resources:
 - 1 data lake bucket
@@ -328,15 +344,17 @@ After all, you can see the result in your GCP console, in Google cloud storage, 
 
 <img src="./src/Picture/airflow-dag-graph.jpg">
 
-In this project, I wrote [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl_dag.py) to create 1 DAG of **(7+1) tasks**, which are:
+In this project, I wrote main script: [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl_dag.py) to create 1 DAG of **(8+1) tasks**, which are:
 1. Reading data from raw url from github that I uploaded myself. Then, upload it to GCP bucket as uncleaned data.
-2. Fetching data from the postgres database that we simulate in docker containers as a data warehouse source. Then, upload it to GCP bucket as cleaned data.
-3. Downloading from the Kaggle website using Kaggle API. Then, upload it to GCP bucket as uncleaned data. 
+2. Fetching (Unloading) data from the postgres database that we simulate in docker containers as a data warehouse source. Then, upload it to GCP bucket as cleaned data.
+3. Downloading from the Kaggle website using Kaggle API. Then, upload it to GCP bucket (GCS) as uncleaned data. 
 4. Data Transformation: reformat to parquet file, and cleaning data to be ready for data analyst and data scientist to use, then load to staging area.
 5. Loading to data warehouse (Bigquery) as cleaned data with a Native table way from staging area.
 6. Loading to data warehouse (Bigquery) as cleaned data with an External table way from staging area.
 7. Loading to another Postgres database as cleaned data.
 8. Clearing data in staging area (GCP bucket). **(this will not be used since we will implement an external table that requires the source file to be exists)**
+
+Additionally, I also wrote [**transform_load.py**](./src/dags/transform_load.py) and [**alternative_cloud_etl.py**](./src/dags/alternative_cloud_etl.py) to demonstrate inheritance of DAGs and how to use different cloud services, respectively.
 
 After we wrote the DAG script, we're gonna test our DAG by initating docker compose again, and go to `localhost:8080` in web browser, get ready to trigger DAG and see if our DAG worked successfully.
 
@@ -354,7 +372,9 @@ But before triggering the DAG, we need to set up the connection between Airflow 
 
 And then, `Save`
 
-***Note:** we used **`database name`** that we specified in `docker-compose.yml` in DAG script where we need to connect to the database, PostgresHook with `conn_id` as Postgres Host name, and `schema` as **`database name`***.
+***Note1:** we used **`database name`** that we specified in `docker-compose.yml` in DAG script where we need to connect to the database, PostgresHook with `conn_id` as Postgres Host name, and `schema` as **`database name`***.
+
+***Note2:** we can omit `schema` argument in PostgresHook and Airflow connection, if we use `public` schema, or specify SELECT `myschema.table_name` FROM ... in `setup.sql`*
 
 **Bigquery connection**: Go to `Admin` > `Connections` > `Create` 
 - `Connection Id`: *your own defined name (will be use in DAG)*
@@ -443,6 +463,94 @@ Most of time, you don't write the DAGs in one time and test once it's done, you 
     ```hcl
     terraform destroy
     ```
+
+### 2.4 Extend to AWS
+In the previous part, I used GCP as a cloud service provider for data lake and data warehouse, but we can also use AWS (or Azure) as a cloud service provider. The process is quite similar to GCP, but it will have some differences in the code and architecture which we can adapt to it easily if we understand the concept.
+
+We will use AWS **S3** as a data lake, and AWS **Redshift** as a data warehouse. As before, we need to create IAM user (which equal to service account in GCP) and get the credentials file (as *.csv*), then use it to create S3 bucket and Redshift by **terraform**.
+
+We will create an IAM user, and get the credentials file manually regarding the security aspect. Access for AWS is quite different from GCP, composed of IAM user, IAM Role, and Policy which will not be described in detail in this project.
+
+**IAM User and Policies**
+
+To get the IAM user, we must have root user which is the first user we created when we created AWS account. Then,
+- We need to go to `IAM` service in AWS console.
+- And go to `Users` > `Add users` > Name an unique `User name` > `Attach existing policies directly`.
+- Type in search box `AmazonS3FullAccess` and `AmazonRedshiftAllCommandsFullAccess` > check the box > `Create user`.
+- Adding custom policies for Redshift Serverless by clicking the created user and then `Add permission` > `Create inline policy`,
+    - use json option and type in this:
+    ```json
+    {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "",
+            "Effect": "Allow",
+            "Action": [
+                "iam:*",
+                "ec2:*",
+                "redshift-serverless:*"
+            ],
+            "Resource": "*"
+        }
+    ]
+    }
+    ```
+    - `Next` > `Create policy`
+- Get a csv credential file by clicking on the created user > `Security credentials` > `Create access key` > choose `Local Code` for our purpose > name an unique access key > `Download .csv file`
+
+After getting the credentials file, mount it to your `credentials` folder. Now, we can use it in **terraform** to create S3 bucket and Redshift.
+
+**Terraform for AWS**
+
+In this part is quite complex due to **"static credentials"** aspect, since we don't need to hard-coded or type in the key in the terraform file. So in general, we will use **"terraform.tfvars"** to pass the hard-coded credentials to terraform file and add `terraform.tfvars` to `.gitignore`.
+
+The concept is simple: we create resources in `main.tf` where some part of it use `var.` to refer to the variable in `variables.tf` file. In `variables.tf` file, we specify the variable name, type, and default value, if the default value is not specified, we have to pass the value after `terraform apply` as inputs **OR** pass it automatically by creating `terraform.tfvars` file and type in the variable name and value. This is where we will copy credentials from csv to put it in **(and again don't forget to add both files to `.gitignore`)**.
+
+All you need to do is creating `terraform.tfvars` in your `terraform` folder, and type in the following:
+```hcl
+# aws credentials
+aws_access_key = "your-access-key"
+aws_secret_key = "your-secret-key"
+
+# optional for serverless redshift
+
+# Application Definition
+app_environment   = "dev" # Dev, Test, Staging, Prod, etc
+
+# Network Configuration
+redshift_serverless_vpc_cidr      = "10.0.0.0/16"
+redshift_serverless_subnet_1_cidr = "10.0.1.0/24"
+redshift_serverless_subnet_2_cidr = "10.0.2.0/24"
+redshift_serverless_subnet_3_cidr = "10.0.3.0/24"
+```
+
+Then you good to go with `terraform apply`.
+
+In Addition, configuring Redshift Serverless is quite complex, so I will not go into detail, but you can check the code in [main.tf](./terraform/main.tf). Basically we need to create the following:
+- Data "aws_availability_zones" to get the availability zone.
+- VPC.
+- Redshift subnet, and also config your available IP address in `terraform.tfvars`.
+- IAM role for Redshift Serverless.
+- Grant some access and attach some policy for the role.
+- Workgroup
+- Namespace.
+
+Unlike S3, which is much more easier to create, we just need to specify the name of the bucket, and the region.
+
+*Note: Redshift Serverless let us create a data warehouse without managing the cluster ourselves, it can **scale down to zero** or **pay as you use**, but it's still in preview, so it's not recommended for production.*
+
+**ETL Code**
+I intentionally separate the code for AWS and GCP, so we can easily find between them. The code for AWS is in [alternative_cloud_etl.py](./src/dags/alternative_cloud_etl.py) file. The code is quite similar to GCP, but there are some differences, such as:
+- using `boto3` instead of `google.cloud.storage` to connect to S3.
+- how we use credentials file to connect to the cloud.
+- using `psycopg2` instead of `bigquery` to load to Redshift.
+- uploading clean data to S3 bucket using `awswrangler`, which implemented on `pandas` library, instead of using `gcsfs`.
+- how to fetch the data from postgres database to gcp and aws, which is different in the code, but the concept is the same.
+
+**Note: Since we use the same file that is downloaded or fetched, so the deleting file from local airflow docker container will be deprecated avoiding conflict between clouds.** *Unless, it will cause a bug by `shutil` in the first run, because the file is not exists in the local container.*
+
+*Note: Loading to Redshift part will be described more in the future*
 
 ## 3. Web Scraping
 
