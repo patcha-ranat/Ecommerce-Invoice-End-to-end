@@ -16,5 +16,5 @@ COPY ./deployment .
 CMD ["uvicorn", "api_app:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "80"]
 
 # execute the following command to build the image at parent directory
-# docker build -t api-app-test -f deployment\deployment.Dockerfile .
+# docker build -t ecomm-invoice-api-local -f deployment\deployment.Dockerfile .
 # even it said it's built at 0.0.0.0:80, access via localhost:80
