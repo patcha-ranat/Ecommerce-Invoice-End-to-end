@@ -1,15 +1,26 @@
+# source files and cache
 config
 logs
-minio-data-volume
 pgdata
 plugins
 postgres-db-volume
-*.json
 *.pyc
 *.exe
+.ipynb_checkpoints
+__pycache__
+
+# credentials
+*.json
 default_filename.txt
+ecomm-invoice-kde-aws-iam_accessKeys.csv
+
+# scripts
 test.py
+*.ipynb
+
+# infrastructure
 .terraform*
 terraform.*
-.ipynb_checkpoints
-ecomm-invoice-kde-aws-iam_accessKeys.csv
+
+# ML models
+*.pkl
