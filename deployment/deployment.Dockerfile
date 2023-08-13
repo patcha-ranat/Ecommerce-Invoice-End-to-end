@@ -13,7 +13,7 @@ COPY ./deployment .
 # we can omit EXPOSE to port if we define in it somewhere else
 # EXPOSE 80
 
-CMD ["uvicorn", "api_app:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "api_app:app", "--host", "0.0.0.0", "--port", "80"]
 
 # execute the following command to build the image at parent directory
 # docker build -t ecomm-invoice-api-local -f deployment\deployment.Dockerfile .

@@ -16,10 +16,12 @@ jobs:
 
     env:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_CRENDENTIALS }}
       REGION: asia-southeast1
       REPOSITORY: ecomm-invoice-registry
       IMAGE_NAME: ecomm-invoice-api
-      SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_CRENDENTIALS }}
+      SERVICE_NAME: ecomm-invoice-api-service
+      PORT: 80
 
     steps:
       - name: Access the repo (Checkout)
@@ -44,11 +46,17 @@ jobs:
         run: |
           gcloud auth activate-service-account --key-file=<(echo "${ SERVICE_ACCOUNT_KEY }")
           gcloud auth configure-docker "${ REGION }-docker.pkg.dev"
-          docker build -t "${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ IMAGE_NAME }" -f deployment\deployment.Dockerfile .
-          docker push "${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ REPOSITORY }/${ IMAGE_NAME }:ecomm-invoice-api"
+          docker build -t "${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ IMAGE_NAME }:latest" -f deployment\deployment.Dockerfile .
+          docker tag "${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ IMAGE_NAME }:latest" ${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ REPOSITORY }/${ IMAGE_NAME }:latest
+          docker push "${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ PROJECT_ID }/${ IMAGE_NAME }:latest"
 
-      - name: 'Deploy to Cloud Run'
-        uses: 'google-github-actions/deploy-cloudrun@v1'
-        with:
-          service: 'ecomm-invoice-api-service'
-          image: ${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ REPOSITORY }/${ IMAGE_NAME }:ecomm-invoice-api
+      - name: 'Deploy to Cloud Run with gcloud'
+        run: |
+          gcloud run deploy ${ SERVICE_NAME } --image ${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ PROJECT_ID }/${ IMAGE_NAME }:latest --region ${ REGION } --port ${ PORT }
+
+      # - name: 'Deploy to Cloud Run'
+      #   uses: 'google-github-actions/deploy-cloudrun@v1'
+      #   with:
+      #     service: 'ecomm-invoice-api-service'
+      #     image: ${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ REPOSITORY }/${ IMAGE_NAME }:latest
+      #     region: ${ REGION }
