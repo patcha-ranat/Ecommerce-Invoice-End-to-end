@@ -4,6 +4,7 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
+      version = "~> 4.61.0"
     }
     aws = {
       source  = "hashicorp/aws"
@@ -115,6 +116,15 @@ resource "google_bigquery_table" "table" {
       }
     ]
 EOF
+}
+
+# Artifact Registry for deployment
+resource "google_artifact_registry_repository" "ecomm-invoice-repo" {
+  location = var.region
+  repository_id = "ecomm-invoice-registry"
+  description = "default description"
+  format = "python"
+  # kms_key_name = "KEY" # omit this to use a default setting
 }
 
 # Amazon Web Services: AWS
