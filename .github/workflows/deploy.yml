@@ -27,11 +27,16 @@ jobs:
       - name: Access the repo (Checkout)
         uses: actions/checkout@v3 # using the "checkout" action
 
-      - name: Authenticate to Google Cloud
-        uses: 'google-github-actions/auth@v1'
-        with:
-          project_id: ${ GCP_PROJECT_ID }
-          credentials_json: ${ SERVICE_ACCOUNT_KEY }
+      - name: Create Google Service JSON file and Authenticate
+        run: |
+          echo $SERVICE_ACCOUNT_KEY | base64 -di > $HOME/gcloud-service-key.json
+          gcloud auth activate-service-account --key-file=$HOME/gcloud-service-key.json
+
+      # - name: Authenticate to Google Cloud
+      #   uses: 'google-github-actions/auth@v1'
+      #   with:
+      #     project_id: ${ GCP_PROJECT_ID }
+      #     credentials_json: ${ SERVICE_ACCOUNT_KEY }
 
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v1'
@@ -44,15 +49,15 @@ jobs:
 
       - name: 'Push image to Google Artifact Registry'
         run: |
-          gcloud auth activate-service-account --key-file=<(echo "${ SERVICE_ACCOUNT_KEY }")
-          gcloud auth configure-docker "${ REGION }-docker.pkg.dev"
-          docker build -t "${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ IMAGE_NAME }:latest" -f deployment\deployment.Dockerfile .
-          docker tag "${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ IMAGE_NAME }:latest" ${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ REPOSITORY }/${ IMAGE_NAME }:latest
-          docker push "${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ PROJECT_ID }/${ IMAGE_NAME }:latest"
+          gcloud auth activate-service-account --key-file=$HOME/gcloud-service-key.json
+          gcloud auth configure-docker "$REGION-docker.pkg.dev"
+          docker build -t "$REGION-docker.pkg.dev/$PROJECT_ID/$IMAGE_NAME:latest" -f deployment/deployment.Dockerfile .
+          docker tag "$REGION-docker.pkg.dev/$PROJECT_ID/$IMAGE_NAME:latest" $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest
+          docker push "$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest"
 
       - name: 'Deploy to Cloud Run with gcloud'
         run: |
-          gcloud run deploy ${ SERVICE_NAME } --image ${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ PROJECT_ID }/${ IMAGE_NAME }:latest --region ${ REGION } --port ${ PORT }
+          gcloud run deploy $SERVICE_NAME --image $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest --region $REGION --port $PORT --project $PROJECT_ID --allow-unauthenticated
 
       # - name: 'Deploy to Cloud Run'
       #   uses: 'google-github-actions/deploy-cloudrun@v1'
