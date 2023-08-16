@@ -38,7 +38,7 @@ jobs:
       #     project_id: ${ GCP_PROJECT_ID }
       #     credentials_json: ${ SERVICE_ACCOUNT_KEY }
 
-      - name: 'Set up Cloud SDK'
+      - name: 'Setup Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v1'
         with:
           version: 'latest'
@@ -47,7 +47,7 @@ jobs:
       #   run: |
       #     gcloud builds submit --tag gcr.io/${ SERVICE_ACCOUNT_KEY }/ecomm
 
-      - name: 'Push image to Google Artifact Registry'
+      - name: 'Push Image to Google Artifact Registry'
         run: |
           gcloud auth activate-service-account --key-file=$HOME/gcloud-service-key.json
           gcloud auth configure-docker "$REGION-docker.pkg.dev"
@@ -65,3 +65,7 @@ jobs:
       #     service: 'ecomm-invoice-api-service'
       #     image: ${ REGION }-docker.pkg.dev/${ PROJECT_ID }/${ REPOSITORY }/${ IMAGE_NAME }:latest
       #     region: ${ REGION }
+
+      - name: 'Delete Credentials from the Runner'
+        run: |
+          rm $HOME/gcloud-service-key.json
