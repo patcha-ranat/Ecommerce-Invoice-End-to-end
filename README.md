@@ -7,16 +7,41 @@ Always click "⋮≡" adjacent to `README.md` at top left to show the table of c
 
 ## **Context**
 
-It's crucial in nowadays to emphasize data existing and make the most use of it. **The project was created to practice and demonstrate the full process of data exploitation** covering setting up environments, ETL process, Web Scraping, Data Visualization, Machine Learning Model Development, Model Deployment and Monitoring using E-commerce data, and also extend to develop strategy and marketing campagin based on the data.
+It's crucial in nowadays to emphasize data existing and make the most use of it. **The project was created to practice and demonstrate the full process of data exploitation** covering setting up environments, ETL process, Web Scraping, Data Visualization, Machine Learning Model Development, Model Deployment using E-commerce data, and also extend to develop strategy and marketing campagin based on the data.
 
 ## **Processes**:
 1. [Setting up Environment](#1-setting-up-environment)
+    - 1.1 [Setting up Overall Services (containers)](#11-setting-up-overall-services-containers)
+    - 1.2 [Intializing all Containers](#12-intializing-all-containers)
+    - 1.3 [Checking if all Dockerfiles correctly executed](#13-checking-if-all-dockerfiles-correctly-executed)
+    - 1.4 [Checking Data in a Database](#14-checking-data-in-a-database)
+    - 1.5 [Exiting](#15-exiting)
+    - 1.6 [Setting up Airflow Web UI](#16-setting-up-airflow-web-ui)
 2. [ETL (Extract, Transform, Load): Writing DAGs and Managing Cloud Services](#2-etl-process-writing-dags-and-managing-cloud-services)
-3. Web Scraping
+    - 2.1 [Setting up Data Lake, and Data Warehouse](#21-setting-up-data-lake-and-data-warehouse)
+    - 2.2 [Setting up DAG and Connections](#22-setting-up-dag-and-connections)
+    - 2.3 [Triggering DAG and Monitoring](#23-triggering-dag-and-monitoring)
+    - [**Step to Reproduce Virtualization for Testing**](#step-to-reproduce-virtualization-for-testing)
+    - 2.4 [Extend to AWS](#24-extend-to-aws)
+    - 2.5 [Detail of the ETL Code](#25-detail-of-the-etl-code)
+3. [Web Scraping](#3-web-scraping)
 4. [EDA and Data Visualization](#4-eda-and-data-visualization)
+    - 4.1 [EDA](#41-eda)
+    - 4.2 [PowerBI Dashboard](#42-powerbi-dashboard)
 5. [Machine Learning Model Development](#5-machine-learning-model-development)
-6. Model Deployment and Monitoring
-
+    - 5.1 [Customer Segmentation By RFM, KMeans, and Tree-based Model](#51-customer-segmentation-by-rfm-kmeans-and-tree)
+    - 5.2 [Market Basket Analysis](#52-market-basket-analysis)
+    - 5.3 [Recommendation System](#53-recommendation-system)
+    - 5.4 [Demand Forecasting](#54-demand-forecasting)
+    - 5.5 [Customer Churn Prediction](#55-customer-churn-prediction)
+    - 5.6 [Price Analysis and Optimization](#56-price-analysis-and-optimization)
+6. [Model Deployment and Monitoring](#6-model-deployment-and-monitoring)
+    - 6.1 [Exporting the Models](#61-exporting-the-models)
+    - 6.2 [Designing and Creating an API Web Service](#62-designing-and-creating-an-api-web-service)
+    - 6.3 [Docker Containerization](#63-docker-containerization)
+    - 6.4 [Deploying the Model to the Cloud Environment](#64-deploying-the-model-to-the-cloud-environment)
+    - 6.3 [*(Optional)* Automating the Deployment Process](#65-automating-the-deployment-process-optional)
+7. [Conclusion](#7-conclusion)
 ## **Project Overview**
 
 ![project-overview](./src/Picture/project-overview.png)
@@ -73,7 +98,7 @@ All of the tools need to be run in different environment to simulate the real us
 
 ***Note:** if you want to reproduce the project by yourself, just create a folder for your working directory. And, the process you need to do will be remarked with **`DIY`***.
 
-### **Step 1.1: Setting up Overall Services (containers)**
+### 1.1 Setting up Overall Services (containers)
 Open your docker desktop and execute bash command (in terminal) within your working directory (in clone file) by:
 ```bash
 docker compose build
@@ -110,7 +135,7 @@ If you're new to container, you will be confused a little with using path. pleas
 </p>
 </details>
 
-### **Step 1.2: Intiating all Containers**
+### 1.2 Intializing all Containers
 Initialize docker container(s) and run process in background (Detach mode)
 ```bash
 docker compose up -d
@@ -125,7 +150,7 @@ docker ps
 
 <img src="./src/Picture/docker-ps.jpg">
 
-### **Step 1.3: Checking if all Dockerfiles correctly executed**
+### 1.3 Checking if all Dockerfiles correctly executed
 What to be checked are
 - Is the data table in postgres database as a source created correctly?
     - data loaded from `cleaned_data.csv` and using the right schema?
@@ -155,7 +180,7 @@ you should see the data csv file and `setup.sql` file in the directory.
 
 What you should check more is that credentials file: `kaggle.json` correctly imported in airflow's scheduler and webservice containers.
 
-### **Step 1.4: Checking Data in a Database**
+### 1.4 Checking Data in a Database
 Access to both postgres containers, and then access database to check if csv file copied into table.
 ```bash
 psql -U postgres -d mydatabase
@@ -194,7 +219,7 @@ exit
 
 ***Note:** In my lastest update adding another postgres databse to simulate data warehouse, I found that specifying image name in `docker-compose.ymal` file is crucial when we pulling the same image but using in different container, because it will `build` with the wrong `Dockerfile` and cause the some issues, like build postgres database target with `postgres.Dockerfile` instead of `postgres-target.Dockerfile` which is not what we want.*
 
-### **Step 1.5: Exiting**
+### 1.5 Exiting
 Don't forget to remove all image and containers when you're done.
 ```bash
 docker compose down -v
@@ -204,7 +229,7 @@ and remove all images via `docker desktop`, we will initiate `docker compose bui
 
 <img src="./src/Picture/docker-desktop.jpg">
 
-### **Step 1.6: Setting up Airflow Web UI**
+### 1.6 Setting up Airflow Web UI
 
 To set up airflow, we need to define more 4 services that refer to [official's .yml file template](https://airflow.apache.org/docs/apache-airflow/2.6.1/docker-compose.yaml) including `airflow-postgres` to be backendDB, `airflow-scheduler` to make scheduler, `airflow-webserver` to make airflow accessible via web UI, and `airflow-init` to initiate airflow session.
 
@@ -248,7 +273,7 @@ In my case (this project), I used a dataset from kaggle which was:
 
 If you want to change data, you have to write your own DAGs what match your specific use-case.
 
-### **Step 2.1: Setting up Data Lake, and Data Warehouse**
+### 2.1 Setting up Data Lake, and Data Warehouse
 As we will use GCP (Google Cloud Platform) as our Data Lake and Data Warehouse, we need to make our airflow script, which run in docker containers in local, being able to connect to GCP by using **google credentials** as known as `service account` or `IAM`. I recommend to manually get the credential from GCP console for the safety aspect.
 
 **Service Account**
@@ -340,7 +365,7 @@ After all, you can see the result in your GCP console, in Google cloud storage, 
 ***Note**: The written script made us easily create and **delete** the resources which proper for testing purpose not on production.*
 
 
-### **Step 2.2: Setting up DAG and Connections**
+### 2.2 Setting up DAG and Connections
 
 <img src="./src/Picture/airflow-dag-graph.jpg">
 
@@ -426,7 +451,7 @@ External tables are suitable when you want to query data without loading it into
 
 *What to note is: if you're using external table, you can't delete the source in data lake, because it require the source to query directly from. And you couldn't see the preview of data table in the Bigquery UI, with Extenal table approach.*
 
-### **Step 2.3: Triggering DAG and Monitoring**
+### 2.3 Triggering DAG and Monitoring
 
 After finishing the writing DAG part, we can go to `localhost:8080` via web browser and login with username, and password we defined in [docker-compose.yml](docker-compose.yml) file. Then, we can see the DAGs we created in the UI. We can trigger the DAG by clicking on the `Trigger DAG` button, and monitor the progress of the DAG by clicking on the DAG name.
 
@@ -455,6 +480,7 @@ Most of time, you don't write the DAGs in one time and test once it's done, you 
     - go to `localhost:8080` via web browser
 4. Check the data in Data Lake and Data Warehouse
     - login to Cloud Console
+    - (If you want to test model deployment, you can do it here)
 5. Stop microservices with docker-compose
     ```bash
     docker compose down -v
@@ -465,11 +491,11 @@ Most of time, you don't write the DAGs in one time and test once it's done, you 
     ```
 
 ### 2.4 Extend to AWS
-In the previous part, I used GCP as a cloud service provider for data lake and data warehouse, but we can also use AWS (or Azure) as a cloud service provider. The process is quite similar to GCP, but it will have some differences in the code and architecture which we can adapt to it easily if we understand the concept.
+In the previous part, I used GCP as a cloud service provider for data lake and data warehouse, but we can also use AWS (or Azure) as a cloud service provider. The process is quite similar to GCP, but it will have some differences in the code and architecture which we can adapt to it easily if we understand the concept of ETL.
 
-We will use AWS **S3** as a data lake, and AWS **Redshift** as a data warehouse. As before, we need to create IAM user (which equal to service account in GCP) and get the credentials file (as *.csv*), then use it to create S3 bucket and Redshift by **terraform**.
+We will use AWS **S3** as a data lake, and AWS **Redshift** as a data warehouse. As before, we need to create IAM user (which equal to service account in GCP) and get the credentials file as `.csv` extension, then use it to create S3 bucket and Redshift by **terraform**.
 
-We will create an IAM user, and get the credentials file manually regarding the security aspect. Access for AWS is quite different from GCP, composed of IAM user, IAM Role, and Policy which will not be described in detail in this project.
+We will create an IAM user, and get the credentials file manually regarding the security aspect. Access for AWS is quite more complex than GCP, composed of IAM user, IAM Role, and Policy which will not be described in detail in this project.
 
 **IAM User and Policies**
 
@@ -499,15 +525,15 @@ To get the IAM user, we must have root user which is the first user we created w
     - `Next` > `Create policy`
 - Get a csv credential file by clicking on the created user > `Security credentials` > `Create access key` > choose `Local Code` for our purpose > name an unique access key > `Download .csv file`
 
-After getting the credentials file, mount it to your `credentials` folder. Now, we can use it in **terraform** to create S3 bucket and Redshift.
+After getting the credentials file, mount it to your `credentials` folder. Now, we can use it in **terraform** to create S3 bucket and Redshift resources.
 
 **Terraform for AWS**
 
-In this part is quite complex due to **"static credentials"** aspect, since we don't need to hard-coded or type in the key in the terraform file. So in general, we will use **"terraform.tfvars"** to pass the hard-coded credentials to terraform file and add `terraform.tfvars` to `.gitignore`.
+In this part is quite complex due to **"static credentials"** aspect, since we don't need to hard-coded or type in the key derectly to the terraform file. So in general, we will use **"terraform.tfvars"** to pass the hard-coded credentials to terraform file and add `terraform.tfvars` to `.gitignore`.
 
-The concept is simple: we create resources in `main.tf` where some part of it use `var.` to refer to the variable in `variables.tf` file. In `variables.tf` file, we specify the variable name, type, and default value, if the default value is not specified, we have to pass the value after `terraform apply` as inputs **OR** pass it automatically by creating `terraform.tfvars` file and type in the variable name and value. This is where we will copy credentials from csv to put it in **(and again don't forget to add both files to `.gitignore`)**.
+The concept is simple: we create resources in `main.tf` where some part of it use `var.` to refer to the variable in `variables.tf` file. In `variables.tf` file, we specify the variable name, type, and default value, if the default value is not specified, we have to pass the value interactively after `terraform apply` as inputs **OR** pass it automatically by creating `terraform.tfvars` file and type in the variable name and value. This is where we will copy credentials from csv to put it in **(and again don't forget to add both files to `.gitignore`)**.
 
-All you need to do is creating `terraform.tfvars` in your `terraform` folder, and type in the following:
+All you need to do is creating `terraform.tfvars` (must be this name) in your `terraform` folder, and type in the following:
 ```hcl
 # aws credentials
 aws_access_key = "your-access-key"
@@ -538,9 +564,10 @@ In Addition, configuring Redshift Serverless is quite complex, so I will not go 
 
 Unlike S3, which is much more easier to create, we just need to specify the name of the bucket, and the region.
 
-*Note: Redshift Serverless let us create a data warehouse without managing the cluster ourselves, it can **scale down to zero** or **pay as you use**, but it's still in preview, so it's not recommended for production.*
+*Note: Redshift Serverless let us create a data warehouse without managing the cluster ourselves, it can **scale down to zero** or **pay as you use**, but it's still in preview.*
 
-**ETL Code**
+### 2.5 Detail of the ETL Code
+
 I intentionally separate the code for AWS and GCP, so we can easily find between them. The code for AWS is in [alternative_cloud_etl.py](./src/dags/alternative_cloud_etl.py) file. The code is quite similar to GCP, but there are some differences, such as:
 - using `boto3` instead of `google.cloud.storage` to connect to S3.
 - how we use credentials file to connect to the cloud.
@@ -640,36 +667,30 @@ A little note for future myself:
 The Model Development part is not fully finished yet, but some part of it are done and ready to be presented.
 
 This is what I have planned so far:
-1. Anomaly Detection ***(Partially done, wait for improvement)***
-2. [Customer Segmentation By RFM, KMeans, and Tree](#52-customer-segmentation-by-rfm-kmeans-and-tree) ***(Done)***
-3. [Market Basket Analysis](#53-market-basket-analysis) ***(Done)***
-4. Recommendation System ***(In progress)***
-5. Demand Forecasting ***(In progress)***
-6. Customer Churn Prediction *(Not started)*
-7. Customer Lifetime Value Prediction *(Not started)*
-8. Price Analysis and Optimization *(Not started)*
+1. [Customer Segmentation By RFM, KMeans, and Tree](#52-customer-segmentation-by-rfm-kmeans-and-tree) ***(Done)***
+2. [Market Basket Analysis](#53-market-basket-analysis) ***(Done)***
+3. Recommendation System *(Not started)*
+4. [Demand Forecasting](#54-demand-forecasting) ***(In progress)***
+5. Customer Churn Prediction *(Not started)*
+6. Price Analysis and Optimization *(Not started)*
 
 You can see the code in [**model_dev.ipynb**](model_dev.ipynb)
 
-### 5.1 Anomaly Detection
-
-*in development . . .*
-
-### 5.2 Customer Segmentation By RFM, KMeans, and Tree
+### 5.1 Customer Segmentation By RFM, KMeans, and Tree-based Model
 
 **Introduction**
 
 **RFM (Recency, Frequency, Monetary)** is a well known method to segment customers based on their behavior. **But recency, fequency, and monetary alone, are not effective enough to segment the diversity of customers**. We should use other available features or characteristics of customers to segment them more effectively that come to the harder to score with traditional RFM method.
 
-As a result, **KMeans emerged as a crucial machine learning technique for effectively clustering clients** into more precise customer segments. **But, Kmeans is not interpretable**, we can't explain the result or criteria to the business that how clusters are formed or how the customers are segmented, but only show what features we use in KMeans model (we don't even know which features are more influence).
+As a result, **KMeans emerged as a crucial machine learning technique for effectively clustering clients** into more precise customer segments. **But, the Kmeans is not interpretable**, we can't explain the result or criteria to the business that how clusters are formed or how the customers are segmented, but only show what features we use in KMeans model (we don't even know which features are more influence).
 
-**So, we can use Decision Tree to find the criteria of the clusters**, and explain the result to the business leading to proper campaigns and strategies that suit to customer segments.
+**So, we can use Decision Tree to find the criteria of the clusters**, and explain the result to the business, leading to proper campaigns and strategies that suit to customer segments to be launched.
 
-Moreover, we can use **XGBoost to find the most important features** that influence the customer segments, and further concern and develop strategies regarding that features, or even use them to segment customers with KMeans again.
+Moreover, we can use **XGBoost to find the most important features that influence the customer segments (or each segment)**, and further concern and develop strategies regarding that features.
 
 **RFM and Features Details**
 
-First, we will form the RFM table based on customer trasactions and add some more features (Feature Engineering) that we think it might be useful for segmentation which include:
+First, we will form the RFM table based on customer transactions and add some more features (Feature Engineering) that we think it might be useful for segmentation which include:
 - Recency
 - Frequency
 - Monetary
@@ -683,6 +704,8 @@ First, we will form the RFM table based on customer trasactions and add some mor
 - refund rate
 
 Eventually, we will get a new table that represents customers profile and their behavior.
+
+*Note: The features we used to decribe the customer behavior is not limited to the features above, we can add more features that we think it might be useful for segmentation, but also should be interpretable for initiaing the campaigns and strategies, so some features, like standard deviation, might not be appropriate for this case.*
 
 **KMeans**
 
@@ -702,7 +725,7 @@ After that, we will use **Decision Tree** to find the criteria of the clusters t
 
 ![kmeans-tree](./src/Picture/kmeans-tree.png)
 
-***Note: The 93% accuracy doesn't mean we segmented the customers correctly by 93%**, because we can't be sure that Kmeans correctly 100% segmented the customers (and definitely, it didn't), but we can tell that the Decision Tree can explain the criteria of the clusters correctly by 93%, So we can quite believe to use the criteria from the Decision Tree to cluster customer segmented to follow Kmeans result*
+***Note: The 93% accuracy doesn't mean we segmented the customers correctly by 93%**, because we can't be sure that Kmeans correctly 100% segmented the customers (and definitely, it didn't), but we can tell that the Decision Tree can explain the criteria of the clusters correctly by 93%, So we can take account of the criteria from the Decision Tree to cluster customer segmented to follow Kmeans result.*
 
 **XGBoost**
 
@@ -722,8 +745,8 @@ Finally we can classify the customers into 10 clusters and explain the criteria 
 
 ... and so on.
 
-*Note: the more cluster you have, the more specific the criteria of each cluster will be, leading to harder to classify.*
-### 5.3 Market Basket Analysis
+*Note: the more cluster and the more depth you have, the more complex and specific the criteria of each cluster will be, leading to harder to classify.*
+### 5.2 Market Basket Analysis
 
 The Market Basket Analysis is a technique to find the association between items that customers purchase together. It can be used to find the relationship between items, and use the result to develop strategies such as cross-selling, and product bundling.
 
@@ -774,11 +797,11 @@ We can interpret the result as:
 - the second row (or rule) is the same as the first row, but the consequent and antecedent are swapped, so we can watch the result from both sides
 - the third rule and so on, show the bundle of item that are frequently purchased together, these rules can be used to develop strategies such as cross-selling, product bundling.
 
-### 5.4 Recommendation System
+### 5.3 Recommendation System
 
 *in development . . .*
 
-### 5.5 Demand Forecasting
+### 5.4 Demand Forecasting
 
 In this section, we will use **Time Series Forecasting** technique to predict future values based on the past values of the data. we will use some input from the past as features to predict the future sales.
 
@@ -794,31 +817,216 @@ Additionally, I used **Fast Fourier Transform** to find seasonality of the data,
 
 <img src="./src/Picture/fourier.png" width="75%">
 
-*in development . . .*
+*In development . . .*
 
-### 5.6 Customer Churn Prediction
+### 5.5 Customer Churn Prediction
 
-*in development . . .*
+*In development . . .*
 
-### 5.7 Customer Lifetime Value Prediction
+### 5.6 Price Analysis and Optimization
 
-*in development . . .*
-
-### 5.8 Price Analysis and Optimization
-
-*in development . . .*
+*In development . . .*
 
 ## 6. Model Deployment and Monitoring
 
-*The project is in development . . .*
+After we developed and evaluated the model, we can deploy the model to production to leverage the business, bringing the model out from the Python notebook or your lab, and not only making it available to the data scientist.
+
+We can deploy the model to production in many approaches, such as:
+- **Batch Inference**: the model is deployed to production as a batch process, the model is run periodically to predict the target variable, the result is stored in the database, and the business can use the result to leverage the business.
+- **Real-Time Inference**: the model is deployed to production as a real-time process.
+- **Model as a Service**: the model is deployed to production as a web service utilizing APIs, the model is run only when the business needs to predict the target variable, and the business can use the result to leverage the business or use the API to integrate with other applications.
+
+In this project, we will deploy the model to the cloud environment **(GCP)**. The model will be deployed as a web service using **FastAPI** as a web framework for building RESTful APIs, and **Docker** as a containerization platform to make the model portable and scalable.
+
+![deploy-overview](./src/Picture/deploy-overview.png)
+
+The steps to deploy the model to production are:
+1. [Exporting the model(s)](#61-exporting-the-models)
+2. [Designing and creating an API web service using FastAPI](#62-designing-and-creating-an-api-web-service)
+3. [Making it portable and scalable using Docker Containerization](#63-docker-containerization)
+4. [Deploying the Codel to the Cloud Environment (GCP)](#64-deploying-the-model-to-the-cloud-environment)
+5. [*(Optional)* Automating the deployment process using CI/CD pipeline by Github Actions](#65-automating-the-deployment-process-optional)
+
+For more resource for deployment overview, I recommended this [ML Deployment Chapter](https://github.com/alexeygrigorev/mlbookcamp-code/tree/master/course-zoomcamp/05-deployment) from [*Machine Learning Zoomcamp*](https://github.com/alexeygrigorev/mlbookcamp-code/tree/master).
+
+### 6.1 Exporting the Model(s)
+
+In this section, we will export the model and extract the pipeline, pre-processing and transformation code, which we meant to use in the API web service.
+
+- For ML model, we will use **Pickle** to save the model as a file.
+    ```python
+    import pickle
+
+    # model.fit(X_train, y_train)
+    with open("./deployment/model_name.pkl", "wb") as f:
+        pickle.dump(model, f)
+    ```
+    Note: save in the same directory as [api_app.py](./deployment/api_app.py) file, so we can easily use it in `api_app.py` later.
+- For **pre-processing and transformation code**, we will extract the **production code** into Python script to be ready to put it in the FastAPI script. When we develop the model, it's usually in the phase of the experiment, consisting of validation and many trials and errors. But, when we deploy to production, we have to select the part of the code that's consistent and will work the best.
+
+### 6.2 Designing and Creating an API Web Service
+
+In this project, we will use **FastAPI** which is a high-performance, web framework for building APIs with Python. FastAPI official documentation is very well written, easy to understand and follow even you're not familiar with web development, just knowing a basic understanding of Python. Check it out here: [FastAPI Documentation](https://fastapi.tiangolo.com/)
+
+What I recommended are:
+- To understand its structure and how it works:
+    - [FastAPI: First Steps](https://fastapi.tiangolo.com/tutorial/first-steps/)
+    - [FastAPI: Path Parameters](https://fastapi.tiangolo.com/tutorial/path-params/)
+    - [FastAPI: Query Parameters](https://fastapi.tiangolo.com/tutorial/query-params/)
+    - [FastAPI: Request Body](https://fastapi.tiangolo.com/tutorial/body/)
+- To understand how to deploy it to production:
+    - [FastAPI: FastAPI in Containers - Docker](https://fastapi.tiangolo.com/deployment/docker/)
+
+Mostly, your API should have these endpoints:
+- **GET**: to get the path and query parameters from the client and return the result.
+- **POST**: to get the **"Request Body"** from the client and return the result.
+
+**Conceptually,**
+
+In my opinion, **GET** method should be used when the client wants to get some data from the server not using the request body to exploit the ML model.
+
+And, **POST** method should be used when the client wants to send the data to the server and get the result from the server which is more proper for utilizing ML model scenario.
+
+We will put pre-processing, transformation code, and write some logic to handle the request from the client in the FastAPI script. 
+
+*In development . . .*
+
+### 6.3 Docker Containerization
+
+After we designed and created the FastAPI script: [api_app.py](./deployment/api_app.py), we will pack it as a Docker image built by: [deployment.Dockerfile](./deployment/deployment.Dockerfile) and run it as a container when we want to use it.
+
+If your API use any libraries that are not included in the base image, you have to install it additionally in the Dockerfile with the second `requirements.txt` that is used by the FastAPI script.
+
+In the [deployment.Dockerfile](./deployment/deployment.Dockerfile), we will specify the base image, copy the FastAPI script, the model file, and dependencies for the script to the container, making it ready to be portable.
+
+**Note: What is worth to mention is that the path specifying in the Dockerfile is relative to working directory, or where we execute the `docker build` command. So, we have to be aware of the path we specify in the Dockerfile and how to execute the file via CLI.**
+
+For example, in the [deployment.Dockerfile](./deployment/deployment.Dockerfile), we specify the path to copy the files as:
+
+```dockerfile
+COPY ./deployment .
+```
+
+Because the command meant to be executed via CLI having working directory in the root directory of the project, not the within `deployment` directory (and with a few research, I found that it's not possible to specify the path to copy the files from the parent directory, so we can tell that this is the right and the only way to be done).
+
+And when we execute the command, we have to be in the root directory of the project with CLI and use this command pattern:
+
+```bash
+docker build -t <image-name> -f <path-to-dockerfile> <path-to-working-directory>
+# -t: tag the image with the name
+# -f: specify the path to Dockerfile that we want to execute
+
+# which can lead to this command
+docker build -t ecomm-invoice-api-local -f deployment\deployment.Dockerfile .
+
+```
+
+### 6.4 Deploying the Model to the Cloud Environment
+
+After we have everything ready, we will deploy the model to the cloud environment (GCP). We will use **Google Cloud Run** which is a serverless environment to deploy the containerized application. It's easy to use and manage, and it's also scalable. But, it needs to be connected to the **Artifact Registry** to use the Docker image we built.
+
+So, what we need to do is:
+- Build the Docker image locally and push it to the Artifact Registry.
+- Deploy the Docker image from the Artifact Registry to the Cloud Run.
+
+That's it! What we need to worry about is how to authenticate the GCP account to use the GCP CLI ***(gcloud)*** and how to connect the Artifact Registry to the Cloud Run which is very well documented in the GCP documentation:
+- [*Creating standard repositories in Artifact Registry*](https://cloud.google.com/artifact-registry/docs/repositories/create-repos)
+- [*Setting up authentication for Docker*](https://cloud.google.com/artifact-registry/docs/docker/authentication)
+- [*Pushing and pulling images*](https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling)
+- [*Deploying to Cloud Run*](https://cloud.google.com/run/docs/deploying#command-line)
+- [*Configuring containers*](https://cloud.google.com/run/docs/configuring/services/containers)
+
+First, you need to install Google Cloud CLI (gcloud/Cloud SDK) and then enable the Artifact Registry API and Cloud Run API (Read Documentation above for more detail). Second, after you run `gcloud --version` and it works fine, you have to run the following commands:
+```bash
+# Google Cloud SDK Shell
+
+# use absolute path to the service account key file to avoid any error
+gcloud auth activate-service-account --key-file=path/to/your/service-account-key.json
+
+# replace placeholder with your desired region
+gcloud auth configure-docker "$REGION-docker.pkg.dev"
+
+# replace placeholder with your desired variables
+# this will build an image locally
+docker build -t "$REGION-docker.pkg.dev/$PROJECT_ID/$IMAGE_NAME:latest" -f deployment\deployment.Dockerfile .
+
+# this will tag the image for the Artifact Registry (This step is essential)
+docker tag "$REGION-docker.pkg.dev/$PROJECT_ID/$IMAGE_NAME:latest" $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest
+
+# this will push the image to the Artifact Registry
+docker push "$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest"
+
+# this will deploy the image in Artifact Registry to the Cloud Run
+gcloud run deploy $SERVICE_NAME --image $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest --region $REGION --port $PORT --project $PROJECT_ID --allow-unauthenticated
+```
+
+*Note1: All commands above are well documented in the GCP documentation, so you can read it above for more detail.*
+
+*Note2: You can export the environment variables to avoid typing the same variables over and over again, reducing the chance of making a mistake.*
+
+Then, you can go to **Cloud Run Console** and check **URL or an endpoint** where you applciation is deployed. You can also check the logs in the **Cloud Run Console** to see if there is any error. **Done!** You can test your application with the endpoints.
+
+### 6.5 Automating the Deployment Process *(Optional)*
+
+When we have developed the model and the API, we surely need to deploy it to the cloud environment with newer version of it. But, we don't want to do it manually every time we update the model or the API. So, this come to the important of automating the deployment process.
+
+Github Actions is one of many CI/CD tools that we can use to automate the deployment process. It's quite easy to use and manage, and it's also free for public repositories. It can automate tasks when we trigger it with the events we specify. For example, we can automate the deployment process when we push or pull request the code with a certain branch to the repository.
+
+What you need to do is upload your project to your own github repository, and create a sample branch that can be used to trigger the workflow. Then, create a workflow file in the `.github/workflows` directory. You can name it whatever you want, but it has to be in the `.yml` format. For example, I name it [**deploy.yml**](./.github/workflows/deploy.yml).
+
+I won't go into detail about how to write the workflow file, but you can check it out in [deploy.yml](./.github/workflows/deploy.yml). The process is similar to what we did in the previous section, but we have to specify the environment variables in the workflow file and add additionally steps for runner to check out the repository, set up the gcloud CLI, and authenticate the service account.
+
+**Github Secrets Variable**
+
+**The most important step** is to add the `GOOGLE_CREDENTIALS` to `Secrets` variables in Github. **Remember that we must not push or expose the service account key file to the public repository**, so we have to add it to the `Secrets` variable so that our workflow can use it to authenticate with google cloud services.
+
+In the [deploy.yml](./.github/workflows/deploy.yml), you should see something like, `${{ secrets.variable_name }}`. This indicate that the workflow call the variable from the `Secrets` variable we specified. You have to do the following steps to do it correctly:
+- Open [**"Git Bash"**](https://git-scm.com/downloads) and run the command to get the content of the service account key file in base64 encoded format.
+    ```bash
+    # Git Bash
+
+    # Use absolute path to the service account key file to avoid any error
+    cat path/to/your/local/service-account-key.json | base64
+    ```
+- Copy the output and go to your github repository.
+- Go to **Settings** > **Secrets and variables** > **New repository secret**.
+- Add the `GOOGLE_CREDENTIALS` as the name of the secret variable and paste the output of the command above to the value of the secret variable.
+- Click **Add secret** and Type in your password to confirm.
+- If you want any additional environment variables, you can add it to the `Secrets` variable as well, like `PROJECT_ID`, etc.
+
+*For the original detail, check it [here](https://stackoverflow.com/a/75127891/22191119)*
+
+When we use it in the workflow, we will decode it back to the original format to put into the service account key file used to authenticate with google cloud services. And, after all the processes are done, we will delete the service account key file from the github runner to avoid any security issue. Check the code detail in the [deploy.yml](./.github/workflows/deploy.yml).
+
+Done! Now, you can push or pull request the code to the repository to trigger the workflow, and you can check the workflow status in the **Actions** tab in your github repository. You can also check the logs in the **Cloud Run Console** to see if there is any error.
+
+*Note1: for my personal method, I use `deploy` branch which is arbitrary name and content in the branch is different from the `main` branch. So, I can pull request the code to the `deploy` branch to trigger the workflow. And if, the workflow is failed, I fix the code in `main` branch and use `git reset` to undo the pushed code repeatedly. If you don't close the pull request, the workflow will be triggered again and again when you push the new version of workflow code to the `main` branch.*
+
+*Note2: **`git reset` then force push is dangerous when you're working with other collaborators**, please be aware of it. Check how to reset or undo the committed without traces [here](https://stackoverflow.com/a/31937298/22191119)*
+
+## 7. Conclusion
+
+*In development . . .*
 
 ---
-*Development Note*
+*What's Next?*
 
-- Currently, I'm working on Demand Forecasting for inventory optimization. After this, the focus will be on model deployment and more on ETL Data Pipeline.
+- Right now, I'm quite done with deployment process. What can be improve is to use **"Cloud Build"**, which will be focus later after DS, and DE parts.
 
-- Model Deployment and Extending Data Lake and Data Warehouse to Microsoft Azure and AWS likely to be more focused than Model Development, but I'm waiting for a proper model to be a prototype.
+- Creating FastAPI script to deploy the model is the main focus at the moment.
 
-- Note New Idea: Deploy Airflow on VM (selected one cloud provider) to schedule ETL Data Pipeline and Model Training.
+- The Demand Forecasting Model is not working successfully. So, it will be the main focus to improve the model performance after creating the API.
 
-***Thank you for your reading. happy learning.***
+- Churn Prediction Model is the next main focus after Demand Forecasting Model.
+
+- Extending to Redshift cluster is not fully finished yet, so I will continue to work on it and extend to Microsoft Azure after.
+
+- The ETL pipeline is not fully finished yet in the part of loading data to the local target Postgres database. So, I will add it after extending to Azure.
+
+- Price Analysis and Recommendation System are the next main focus after ETL pipeline.
+
+- Improving PowerBI Dashboard to analyze the business is the last main focus after Recommendation System.
+
+- *Note New Idea: Deploy Airflow on VM (selected one cloud provider) to schedule ETL Data Pipeline and Model Training.*
+
+***Thank you for your reading, happy learning.***
