@@ -16,7 +16,7 @@ ecomm-invoice-kde-aws-iam_accessKeys.csv
 
 # scripts
 test.py
-*.ipynb
+# *.ipynb
 
 # infrastructure
 .terraform*

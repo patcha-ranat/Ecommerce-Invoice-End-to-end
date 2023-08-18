@@ -1,7 +1,7 @@
 # End-to-end E-commerce Demand Forecasting
 *Patcharanat P.*
 ```text
-Always click "⋮≡" adjacent to `README.md` at top left to show the table of contents if you're lost.
+Click "⋮≡" at top left to show the table of contents.
 ```
 **End-to-end Data project** in the e-commerce and retail industries covering the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analytic skills, and also how to implement them in the real world utilizing Business and Marketing knowledge.
 
@@ -54,12 +54,12 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
     - API (with token)
 - Data Lake & Staging Area
     - Google Cloud Storage
-    
+    - AWS S3
     *(Extend to Azure Blob Storage in the future)*
 - Data Warehouse
     - Postgres Database
     - Bigquery (External and Native Tables)
-    
+    - Redshift
     *(Extend to Azure Synapse in the future)*
 - Orchestrator
     - Airflow
@@ -69,10 +69,14 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
 - EDA & Visualization
     - PowerBI (Desktop and Service)
     - Python (Jupyter Notebook)
-- Machine Learning Model
-    - Jupyter Notebook (Model development)
+- Machine Learning Model Development
+    - Jupyter Notebook
+- Model Deployment and Monitoring
     - FastAPI (Model Deployment)
     - Streamlit (Monitoring)
+    - Artifact Registry
+    - Cloud Run
+    - Github Actions (CI/CD)
 
 Dataset: [E-Commerce Data - Kaggle](https://www.kaggle.com/datasets/carrie1/ecommerce-data)
 
@@ -805,7 +809,7 @@ We can interpret the result as:
 
 In this section, we will use **Time Series Forecasting** technique to predict future values based on the past values of the data. we will use some input from the past as features to predict the future sales.
 
-In general, we use current features or features that already happened fed into the model to predict the sales as a target. But, the problem is, if we want to predict the sales of the next month, we don't have the features of the next month yet. So, we have to use the features of the past to predict the sales of the next month.
+In general, we use current features or features that already happened fed into the model to predict the sales as a target. But, the problem is, if we want to predict the sales of the next month, we don't have the records of the next month yet. So, we have to use the records of the past to predict the sales of the next month.
 
 Therefore, we have to perform feature engineering, transform data, create features to obtain the appropriate and effective features to predict the future sales. In this project, we will use **Lag Features** and **Rolling Window Statistics** to create features.
 
@@ -813,9 +817,26 @@ But how can we know how lag of the features and how many rolling window statisti
 
 <img src="./src/Picture/autocorrelation.png">
 
-Additionally, I used **Fast Fourier Transform** to find seasonality of the data, but it results in no significant seasonality exists. So, it was discarded.
+Additionally, I used **Fast Fourier Transform** to find seasonality of the data, which is the pattern that repeats itself at regular intervals of time. The seasonality can be used to create features to predict the future sales.
 
 <img src="./src/Picture/fourier.png" width="75%">
+
+Personally, I thought using fast fourier transform to find seasonality is quite more quantitative than using autocorrelation. But, we can use both of them to find the seasonality of the data to ensure the result.
+
+![](./src/Picture/predict-demand.png)
+
+I think the most challenging part of timeseries forecasting is to find the appropriate features to predict the future sales. The features that we use to predict the future sales should be the features that already happened in the past, and we can't use the features that will happen in the future. So, checking how much lagged values of the features can be significant to predict the future sales is very important.
+
+Model | RMSE | MAPE
+:---: | :---: | :---:
+Baseline (Mean) | 3170.143 | 27.16%
+LightGBM | 4884.230 | 32.29%
+
+*(Current Result)*
+
+Even we can see that the prediction result can a bit capture the trend of the data, but the result is not good enough compared with **mean** of the target.
+
+I intended to **decompose** the data into trend, seasonality, and residual, then use them as features to predict the future sales to make it stationary **and also add moving average types** such as EMA (Exponential Moving Average) and LWMA (Linear Weighted Moving Average) to the model, to weight the recent data more than the old data. But, I think it's enough for now, I will update the model later.
 
 *In development . . .*
 
@@ -936,7 +957,14 @@ That's it! What we need to worry about is how to authenticate the GCP account to
 - [*Deploying to Cloud Run*](https://cloud.google.com/run/docs/deploying#command-line)
 - [*Configuring containers*](https://cloud.google.com/run/docs/configuring/services/containers)
 
-First, you need to install Google Cloud CLI (gcloud/Cloud SDK) and then enable the Artifact Registry API and Cloud Run API (Read Documentation above for more detail). Second, after you run `gcloud --version` and it works fine, you have to run the following commands:
+First, you need to install Google Cloud CLI (gcloud/Cloud SDK) and then enable the Artifact Registry API and Cloud Run API (Read Documentation above for more detail). Second, you can run `gcloud --version` to check if it is able to be used. Third, add the following roles to the service account that you use to authenticate the gcloud CLI in IAM & Admin page:
+
+- Service Account User
+- Artifact Registry Writer
+- Artifact Registry Reader
+- Cloud Run Admin
+
+Then, you have to run the following commands:
 ```bash
 # Google Cloud SDK Shell
 
