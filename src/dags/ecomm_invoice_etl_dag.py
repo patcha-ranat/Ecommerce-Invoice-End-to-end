@@ -15,7 +15,7 @@ import shutil
 from google.cloud import storage
 import logging
 
-from transform_load import clean_data_google, load_data_google, clear_staging_area
+from transform_load import clean_data_google, load_data_google, clear_staging_area, load_data_google_autodetect
 from alternative_cloud_etl import extract_api_aws, extract_url_aws, extract_database_aws, clean_aws, load_data_aws
 
 # get variables from .env file
@@ -112,17 +112,17 @@ def extract_api_google():
 
 
 default_args = {
+    "dag_id": "ecomm_invoice_etl_dag",
     "owner": "Ken",
     # "email": ["XXXXX"],
-    "start_date": timezone.datetime(2023, 6, 26),
-    "retries": 3,
-    "retry_delay": timedelta(minutes=1),
+    "start_date": datetime(2023, 8, 22),
+    "schedule": None, # or @daily
+    # "retries": 3,
+    # "retry_delay": timedelta(minutes=1),
 }
 
 with DAG(
-    'ecomm_invoice_etl_dag',
-    start_date=datetime(2023, 5, 30), 
-    schedule_interval=None # or '@daily'
+    default_args=default_args,
     ) as dag:
     
     extract_data_url_google = PythonOperator(
@@ -178,6 +178,18 @@ with DAG(
             },
         },
         gcp_conn_id="my_gcp_conn_id",
+    )
+
+    load_to_bigquery_autodetect = PythonOperator(
+        task_id="load_to_bigquery_autodetect",
+        python_callable=load_data_google_autodetect,
+        op_kwargs={
+            "project_id": project_id,
+            "bucket_name": gcp_bucket,
+            "dataset_name": dataset_name,
+            "table_name": table_name,
+            "credentials_path": credentials_path
+        }
     )
 
     # clear_staging_area_gcs = PythonOperator(
@@ -242,9 +254,11 @@ with DAG(
     # define task dependencies
 
     [extract_data_url_google, extract_data_database_google, extract_data_api_google] >> transform_data_google
-    transform_data_google >> [load_to_bigquery, load_to_bigquery_external]
+    transform_data_google >> [load_to_bigquery, load_to_bigquery_external, load_to_bigquery_autodetect]
     # [load_to_bigquery, load_to_bigquery_external] >> clear_staging_area_gcs
 
     [extract_data_api_aws, extract_data_database_aws, extract_data_url_aws] >> transform_data_aws
     # transform_data_aws >> load_to_redshift >> clear_staging_area_s3
-    
+
+if __name__ == "__main__":
+    dag.test()

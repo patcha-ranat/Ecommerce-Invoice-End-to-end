@@ -118,6 +118,20 @@ resource "google_bigquery_table" "table" {
 EOF
 }
 
+# # Not usable if data is not already exist in GCS
+# resource "google_bigquery_table" "external" {
+#   dataset_id = google_bigquery_dataset.dataset.dataset_id
+#   table_id   = var.EXTERNAL_TABLE_ID
+#   deletion_protection = false
+#   external_data_configuration {
+#     autodetect    = true # only use for csv, json, and google sheets data
+#     source_format = "PARQUET"
+#     source_uris = [
+#       "gs://${local.data_lake_bucket}/staging_area/ecomm_invoice_transaction.parquet",
+#     ]
+#   }
+# }
+
 # Artifact Registry for deployment
 resource "google_artifact_registry_repository" "ecomm-invoice-repo" {
   location = var.region
@@ -144,181 +158,181 @@ resource "aws_s3_bucket" "aws_bucket" {
   # }
 }
 
-# Redshift serverless
-# Create the Redshift Serverless Network
-# AWS Availability Zones data
-data "aws_availability_zones" "available" {}
+# # Redshift serverless
+# # Create the Redshift Serverless Network
+# # AWS Availability Zones data
+# data "aws_availability_zones" "available" {}
 
-######################################
+# ######################################
 
-# Create the VPC
-resource "aws_vpc" "redshift-serverless-vpc" {
-  cidr_block           = var.redshift_serverless_vpc_cidr
-  enable_dns_hostnames = true
+# # Create the VPC
+# resource "aws_vpc" "redshift-serverless-vpc" {
+#   cidr_block           = var.redshift_serverless_vpc_cidr
+#   enable_dns_hostnames = true
   
-  tags = {
-    Name        = "ecomm-invoice-kde-redshift-serverless-vpc"
-    Environment = var.app_environment
-  }
-}
+#   tags = {
+#     Name        = "ecomm-invoice-kde-redshift-serverless-vpc"
+#     Environment = var.app_environment
+#   }
+# }
 
-######################################
+# ######################################
 
-# Create the Redshift Subnet AZ1
-resource "aws_subnet" "redshift-serverless-subnet-az1" {
-  vpc_id            = aws_vpc.redshift-serverless-vpc.id
-  cidr_block        = var.redshift_serverless_subnet_1_cidr
-  availability_zone = data.aws_availability_zones.available.names[0]
+# # Create the Redshift Subnet AZ1
+# resource "aws_subnet" "redshift-serverless-subnet-az1" {
+#   vpc_id            = aws_vpc.redshift-serverless-vpc.id
+#   cidr_block        = var.redshift_serverless_subnet_1_cidr
+#   availability_zone = data.aws_availability_zones.available.names[0]
   
-  tags = {
-    Name        = "ecomm-invoice-kde-redshift-serverless-subnet-az1"
-    Environment = var.app_environment
-  }
-}
+#   tags = {
+#     Name        = "ecomm-invoice-kde-redshift-serverless-subnet-az1"
+#     Environment = var.app_environment
+#   }
+# }
 
-# Create the Redshift Subnet AZ2
-resource "aws_subnet" "redshift-serverless-subnet-az2" {
-  vpc_id            = aws_vpc.redshift-serverless-vpc.id
-  cidr_block        = var.redshift_serverless_subnet_2_cidr
-  availability_zone = data.aws_availability_zones.available.names[1]
+# # Create the Redshift Subnet AZ2
+# resource "aws_subnet" "redshift-serverless-subnet-az2" {
+#   vpc_id            = aws_vpc.redshift-serverless-vpc.id
+#   cidr_block        = var.redshift_serverless_subnet_2_cidr
+#   availability_zone = data.aws_availability_zones.available.names[1]
   
-  tags = {
-    Name        = "ecomm-invoice-kde-redshift-serverless-subnet-az2"
-    Environment = var.app_environment
-  }
-}
+#   tags = {
+#     Name        = "ecomm-invoice-kde-redshift-serverless-subnet-az2"
+#     Environment = var.app_environment
+#   }
+# }
 
-# Create the Redshift Subnet AZ3
-resource "aws_subnet" "redshift-serverless-subnet-az3" {
-  vpc_id            = aws_vpc.redshift-serverless-vpc.id
-  cidr_block        = var.redshift_serverless_subnet_3_cidr
-  availability_zone = data.aws_availability_zones.available.names[2]
+# # Create the Redshift Subnet AZ3
+# resource "aws_subnet" "redshift-serverless-subnet-az3" {
+#   vpc_id            = aws_vpc.redshift-serverless-vpc.id
+#   cidr_block        = var.redshift_serverless_subnet_3_cidr
+#   availability_zone = data.aws_availability_zones.available.names[2]
   
-  tags = {
-    Name        = "ecomm-invoice-kde-redshift-serverless-subnet-az3"
-    Environment = var.app_environment
-  }
-}
+#   tags = {
+#     Name        = "ecomm-invoice-kde-redshift-serverless-subnet-az3"
+#     Environment = var.app_environment
+#   }
+# }
 
-resource "aws_security_group" "redshift-serverless-security-group" {
-  depends_on = [aws_vpc.redshift-serverless-vpc]
+# resource "aws_security_group" "redshift-serverless-security-group" {
+#   depends_on = [aws_vpc.redshift-serverless-vpc]
 
-  name        = "ecomm-invoice-kde-redshift-serverless-security-group"
-  description = "ecomm-invoice-kde-redshift-serverless-security-group"
+#   name        = "ecomm-invoice-kde-redshift-serverless-security-group"
+#   description = "ecomm-invoice-kde-redshift-serverless-security-group"
 
-  vpc_id = aws_vpc.redshift-serverless-vpc.id
+#   vpc_id = aws_vpc.redshift-serverless-vpc.id
   
-  ingress {
-    description = "Redshift port"
-    from_port   = 5439
-    to_port     = 5439
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/24"] // update this to secure the connection to Redshift
-  }
+#   ingress {
+#     description = "Redshift port"
+#     from_port   = 5439
+#     to_port     = 5439
+#     protocol    = "tcp"
+#     cidr_blocks = ["10.0.0.0/24"] // update this to secure the connection to Redshift
+#   }
   
-  tags = {
-    Name        = "ecomm-invoice-kde-redshift-serverless-security-group"
-    Environment = var.app_environment
-  }
-}
+#   tags = {
+#     Name        = "ecomm-invoice-kde-redshift-serverless-security-group"
+#     Environment = var.app_environment
+#   }
+# }
 
-# Create the Redshift Serverless IAM Role
-resource "aws_iam_role" "redshift-serverless-role" {
-  name = "ecomm-invoice-kde-redshift-serverless-role"
+# # Create the Redshift Serverless IAM Role
+# resource "aws_iam_role" "redshift-serverless-role" {
+#   name = "ecomm-invoice-kde-redshift-serverless-role"
 
-assume_role_policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Principal": {
-                "Service": [
-                    "redshift-serverless.amazonaws.com",
-                    "redshift.amazonaws.com",
-                    "sagemaker.amazonaws.com"
-                ]
-            },
-            "Action": "sts:AssumeRole"
-        }
-    ]
-}
-EOF
+# assume_role_policy = <<EOF
+# {
+#     "Version": "2012-10-17",
+#     "Statement": [
+#         {
+#             "Effect": "Allow",
+#             "Principal": {
+#                 "Service": [
+#                     "redshift-serverless.amazonaws.com",
+#                     "redshift.amazonaws.com",
+#                     "sagemaker.amazonaws.com"
+#                 ]
+#             },
+#             "Action": "sts:AssumeRole"
+#         }
+#     ]
+# }
+# EOF
 
-  tags = {
-    Name        = "ecomm_invoice-kde-redshift-serverless-role"
-    Environment = var.app_environment
-  }
-}
+#   tags = {
+#     Name        = "ecomm_invoice-kde-redshift-serverless-role"
+#     Environment = var.app_environment
+#   }
+# }
 
-# Create and assign an IAM Role Policy to access S3 Buckets
-resource "aws_iam_role_policy" "redshift-s3-full-access-policy" {
-  name = "AmazonRedshift-CommandsAccessPolicy-ecomm-invoice-kde"
-  role = aws_iam_role.redshift-serverless-role.id
+# # Create and assign an IAM Role Policy to access S3 Buckets
+# resource "aws_iam_role_policy" "redshift-s3-full-access-policy" {
+#   name = "AmazonRedshift-CommandsAccessPolicy-ecomm-invoice-kde"
+#   role = aws_iam_role.redshift-serverless-role.id
 
-policy = <<EOF
-{
-   "Version": "2012-10-17",
-   "Statement": [
-     {
-       "Effect": "Allow",
-       "Action": [
-            "s3:*",
-            "iam:ListPolicies"
-        ],
-       "Resource": "*"
-      }
-   ]
-}
-EOF
-}
+# policy = <<EOF
+# {
+#    "Version": "2012-10-17",
+#    "Statement": [
+#      {
+#        "Effect": "Allow",
+#        "Action": [
+#             "s3:*",
+#             "iam:ListPolicies"
+#         ],
+#        "Resource": "*"
+#       }
+#    ]
+# }
+# EOF
+# }
 
-# Get the AmazonRedshiftAllCommandsFullAccess policy
-data "aws_iam_policy" "redshift-full-access-policy" {
-  name = "AmazonRedshiftAllCommandsFullAccess"
-}
+# # Get the AmazonRedshiftAllCommandsFullAccess policy
+# data "aws_iam_policy" "redshift-full-access-policy" {
+#   name = "AmazonRedshiftAllCommandsFullAccess"
+# }
 
-# Attach the policy to the Redshift role
-resource "aws_iam_role_policy_attachment" "attach-s3" {
-  role       = aws_iam_role.redshift-serverless-role.name
-  policy_arn = data.aws_iam_policy.redshift-full-access-policy.arn
-}
+# # Attach the policy to the Redshift role
+# resource "aws_iam_role_policy_attachment" "attach-s3" {
+#   role       = aws_iam_role.redshift-serverless-role.name
+#   policy_arn = data.aws_iam_policy.redshift-full-access-policy.arn
+# }
 
-# Create the Redshift Serverless Namespace
-resource "aws_redshiftserverless_namespace" "serverless" {
-  namespace_name      = var.redshift_serverless_namespace_name
-  db_name             = var.redshift_serverless_database_name
-  admin_username      = var.redshift_serverless_admin_username
-  admin_user_password = var.redshift_serverless_admin_password
-  iam_roles           = [aws_iam_role.redshift-serverless-role.arn]
+# # Create the Redshift Serverless Namespace
+# resource "aws_redshiftserverless_namespace" "serverless" {
+#   namespace_name      = var.redshift_serverless_namespace_name
+#   db_name             = var.redshift_serverless_database_name
+#   admin_username      = var.redshift_serverless_admin_username
+#   admin_user_password = var.redshift_serverless_admin_password
+#   iam_roles           = [aws_iam_role.redshift-serverless-role.arn]
 
-  tags = {
-    Name        = var.redshift_serverless_namespace_name
-    Environment = var.app_environment
-  }
-}
+#   tags = {
+#     Name        = var.redshift_serverless_namespace_name
+#     Environment = var.app_environment
+#   }
+# }
 
-# Create the Redshift Serverless Workgroup
-resource "aws_redshiftserverless_workgroup" "serverless" {
-  depends_on = [aws_redshiftserverless_namespace.serverless]
+# # Create the Redshift Serverless Workgroup
+# resource "aws_redshiftserverless_workgroup" "serverless" {
+#   depends_on = [aws_redshiftserverless_namespace.serverless]
 
-  namespace_name = aws_redshiftserverless_namespace.serverless.id
-  workgroup_name = var.redshift_serverless_workgroup_name
-  base_capacity  = var.redshift_serverless_base_capacity
+#   namespace_name = aws_redshiftserverless_namespace.serverless.id
+#   workgroup_name = var.redshift_serverless_workgroup_name
+#   base_capacity  = var.redshift_serverless_base_capacity
   
-  security_group_ids = [ aws_security_group.redshift-serverless-security-group.id ]
-  subnet_ids         = [ 
-    aws_subnet.redshift-serverless-subnet-az1.id,
-    aws_subnet.redshift-serverless-subnet-az2.id,
-    aws_subnet.redshift-serverless-subnet-az3.id,
-  ]
-  publicly_accessible = var.redshift_serverless_publicly_accessible
+#   security_group_ids = [ aws_security_group.redshift-serverless-security-group.id ]
+#   subnet_ids         = [ 
+#     aws_subnet.redshift-serverless-subnet-az1.id,
+#     aws_subnet.redshift-serverless-subnet-az2.id,
+#     aws_subnet.redshift-serverless-subnet-az3.id,
+#   ]
+#   publicly_accessible = var.redshift_serverless_publicly_accessible
   
-  tags = {
-    Name        = var.redshift_serverless_workgroup_name
-    Environment = var.app_environment
-  }
-}
+#   tags = {
+#     Name        = var.redshift_serverless_workgroup_name
+#     Environment = var.app_environment
+#   }
+# }
 
 # redshift traditional cluster
 # resource "aws_redshift_cluster" "ecomm_invoice_cluster" {

@@ -31,6 +31,12 @@ variable "TABLE_ID" {
   default = "ecomm_invoice_transaction"
 }
 
+variable "EXTERNAL_TABLE_ID" {
+  description = "your external table name in BigQuery"
+  type = string
+  default = "external_ecomm_invoice_transaction"
+}
+
 # variable "BUCKET_NAME" {
 #     description = "Unique name for your bucket"
 #     defualt = "ecomm-invoice-data-lake-bucket"

@@ -71,6 +71,25 @@ def load_data_google(project_id, bucket_name, dataset_name, table_name, credenti
     print("Loaded {} rows.".format(destination_table.num_rows))
 
 
+def load_data_google_autodetect(project_id, bucket_name, dataset_name, table_name, credentials_path):
+    # Construct a BigQuery client object.
+    client = bigquery.Client.from_service_account_json(credentials_path)
+
+    # TODO(developer): Set table_id to the ID of the table to create.
+    table_id = f"{project_id}.{dataset_name}.{table_name}"
+
+    job_config = bigquery.LoadJobConfig(
+        autodetect=True, source_format="PARQUET" # autodetect is omittable if source_format are parquet, avro or orc
+    )
+    uri = f"gs://{bucket_name}/staging_area/ecomm_invoice_transaction.parquet"
+    load_job = client.load_table_from_uri(
+        uri, table_id, job_config=job_config
+    )  # Make an API request.
+    load_job.result()  # Waits for the job to complete.
+    destination_table = client.get_table(table_id)
+    print("Loaded {} rows to an auto-detected table.".format(destination_table.num_rows))
+
+
 def clear_staging_area(bucket_name, blob_name, credentials_path):
     """Deletes a blob from the bucket."""
     # bucket_name = "your-bucket-name"
