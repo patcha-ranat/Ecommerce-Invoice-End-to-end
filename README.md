@@ -133,7 +133,7 @@ Then, you need to create a container with airflow image. You will need to copy `
 
 To easily run multiple docker containers or running microservices, you will need docker compose. The file that will do the task is [`docker-compose.yml`](docker-compose.yml), which will `build` all the images for containers we specified in `build` and `context` parts resulting in running different `.Dockerfile` for different containers.
 
-In airflow official site, you will find template to run airflow as `docker-compose.yml` you can use it as reference and change it to fit your needs, like add postgres section, and remove unnecessary part that can causes running out of memory making you unable to run docker containers successfully.
+In airflow official site, you will find [`docker-compose.yml`](https://airflow.apache.org/docs/apache-airflow/stable/docker-compose.yaml) template to run airflow you can use it as reference and change it to fit your needs, like add postgres section, and remove unnecessary part that can causes running out of memory making you unable to run docker containers successfully.
 
 If you're new to container, you will be confused a little with using path. please be careful with paths where you mount the files to.
 </p>
@@ -440,6 +440,17 @@ For details of airflow connection configuring, we only create connections of Pos
 - When I first load the parquet file to pre-defined schema in Bigquery, I encountered the error that the schema is not matched. I found out that the schema of parquet file is not the same as the schema in Bigquery with extra column "index level 0". So, the solution is to drop the column before saving to parquet file in Google Cloud Storage by using `df.to_parquet(..., index=False)`, just like `to_csv('filename.csv', index=False)`.
 
     *(Even you download the `index=True` parquet file to check in pandas, it will not show the extra index column)*
+- *(Update)* Meanwhile I was developing other part of the project, a new airflow version(2.7) was launched, and the new version of airflow image is not compatible with the old version by airflow backendDB which caused a serious bug making `airflow-init` initialized unsuccessfully, `airflow-scheduler`, and `airflow-webserver` not work as expected.
+    - the solution is to remove all containers, images, and existing volumes of airflow backendDB, and then intialize again with the fix image version.
+        - remove local volumes by
+        ```bash
+        docker compose down --volumes --rmi all
+
+        docker system prune --all --volumes
+        ```
+        - remove local airflow backendDB `postgres-db-volume`, and also `logs`, `plugins`, and `config` files in `src` folder.
+    - I changed the airflow image version to `apache/airflow:2.6.2-python3.10` in [airflow.Dockerfile](airflow.Dockerfile) and `apache/airflow:2.6.2` in [docker-compose.yml](./docker-compose.yml) to the version of image.
+    - Don't use the `latest` version in your script, if you want to make you work reproduceable.
 </p>
 </details>
 
@@ -920,7 +931,7 @@ If your API use any libraries that are not included in the base image, you have 
 
 In the [deployment.Dockerfile](./deployment/deployment.Dockerfile), we will specify the base image, copy the FastAPI script, the model file, and dependencies for the script to the container, making it ready to be portable.
 
-**Note: What is worth to mention is that the path specifying in the Dockerfile is relative to working directory, or where we execute the `docker build` command. So, we have to be aware of the path we specify in the Dockerfile and how to execute the file via CLI.**
+**Note: What worth to mention is that the path specifying in the Dockerfile is relative to working directory, or where we execute the `docker build` command. So, we have to be aware of the path we specify in the Dockerfile and how to execute the file via CLI.**
 
 For example, in the [deployment.Dockerfile](./deployment/deployment.Dockerfile), we specify the path to copy the files as:
 
@@ -957,12 +968,16 @@ That's it! What we need to worry about is how to authenticate the GCP account to
 - [*Deploying to Cloud Run*](https://cloud.google.com/run/docs/deploying#command-line)
 - [*Configuring containers*](https://cloud.google.com/run/docs/configuring/services/containers)
 
-First, you need to install Google Cloud CLI (gcloud/Cloud SDK) and then enable the Artifact Registry API and Cloud Run API (Read Documentation above for more detail). Second, you can run `gcloud --version` to check if it is able to be used. Third, add the following roles to the service account that you use to authenticate the gcloud CLI in IAM & Admin page:
+First, you need to install Google Cloud CLI (gcloud/Cloud SDK) and then enable the Artifact Registry API and Cloud Run API (Read Documentation above for more detail). Second, you can run `gcloud --version` in Google Cloud SDK to check if it is able to be used. Third, add the following roles to the service account that you use to authenticate the gcloud CLI in IAM & Admin page:
 
 - Service Account User
 - Artifact Registry Writer
 - Artifact Registry Reader
 - Cloud Run Admin
+
+*Note: Add ***"Artifact Registry Administrator"*** role if you want to create a repository in the Artifact Registry via Terraform.*
+
+And the last step is manually creating a repository in the Artifact Registry.
 
 Then, you have to run the following commands:
 ```bash
@@ -992,7 +1007,7 @@ gcloud run deploy $SERVICE_NAME --image $REGION-docker.pkg.dev/$PROJECT_ID/$REPO
 
 *Note2: You can export the environment variables to avoid typing the same variables over and over again, reducing the chance of making a mistake.*
 
-Then, you can go to **Cloud Run Console** and check **URL or an endpoint** where you applciation is deployed. You can also check the logs in the **Cloud Run Console** to see if there is any error. **Done!** You can test your application with the endpoints.
+Then, you can go to **Cloud Run Console** and check **URL or an endpoint** where you application is deployed. You can also check the logs in the **Cloud Run Console** to see if there is any error. **Done!** You can test your application with the endpoints.
 
 ### 6.5 Automating the Deployment Process *(Optional)*
 
@@ -1022,22 +1037,35 @@ In the [deploy.yml](./.github/workflows/deploy.yml), you should see something li
 - Click **Add secret** and Type in your password to confirm.
 - If you want any additional environment variables, you can add it to the `Secrets` variable as well, like `PROJECT_ID`, etc.
 
-*For the original detail, check it [here](https://stackoverflow.com/a/75127891/22191119)*
+*For the original detail of encoding the service account key as base64, check it [here](https://stackoverflow.com/a/75127891/22191119)*
 
 When we use it in the workflow, we will decode it back to the original format to put into the service account key file used to authenticate with google cloud services. And, after all the processes are done, we will delete the service account key file from the github runner to avoid any security issue. Check the code detail in the [deploy.yml](./.github/workflows/deploy.yml).
 
-Done! Now, you can push or pull request the code to the repository to trigger the workflow, and you can check the workflow status in the **Actions** tab in your github repository. You can also check the logs in the **Cloud Run Console** to see if there is any error.
+Done! Now, you can push or pull request the code to the repository (with your specific branch) to trigger the workflow, and you can check the workflow status in the **Actions** tab in your github repository. You can also check the logs in the **Cloud Run Console** to see if there is any error.
 
-*Note1: for my personal method, I use `deploy` branch which is arbitrary name and content in the branch is different from the `main` branch. So, I can pull request the code to the `deploy` branch to trigger the workflow. And if, the workflow is failed, I fix the code in `main` branch and use `git reset` to undo the pushed code repeatedly. If you don't close the pull request, the workflow will be triggered again and again when you push the new version of workflow code to the `main` branch.*
+*Note1: for my personal method, I use `deploy` branch which is an arbitrary name and content in the branch is different from the `main` branch. So, I can pull request the code to the `deploy` branch to trigger the workflow. And if the workflow is failed, I fix the code in `main` branch and use `git reset` to undo the pushed code repeatedly. If you don't close the pull request, the workflow will be triggered again and again when you push the new version of workflow code to the `main` branch.*
 
 *Note2: **`git reset` then force push is dangerous when you're working with other collaborators**, please be aware of it. Check how to reset or undo the committed without traces [here](https://stackoverflow.com/a/31937298/22191119)*
 
+This solution of encoding the service account key file as base64 is not the best practice regarding security aspect. There's another better approach I found which is called ["Keyless authentication"](https://cloud.google.com/blog/products/identity-security/enabling-keyless-authentication-from-github-actions), but it's much more complicated and requires more services invloved and many more steps to be done. So, as we are in the learning phase, I think this approach is enough for now.
+
 ## 7. Conclusion
 
-*In development . . .*
+From this project, we learned how to:
+- **Design data architecture, and select tools for each process** to be used in the project.
+- **Set up environment for virtualization** to simulate the local environment such as database, and web server.
+- **Create an ETL pipeline** to extract data from various sources, transform the data, and load the data to the target database.
+- **Utilize cloud services** to extend the datalake, data warehouse to production.
+- **Create a dashboard** to visualize the data and analyze the business.
+- **Develop machine learning models** to predict the future sales, customer segments, and customer churn.
+- **Deploy the model to production** to leverage the business using API web service, and cloud services.
+
+This is the biggest personal project I've ever done so far, and I learned a lot from it. I hope it can be useful for anyone reading this as well.  Although this project is not fully finished yet, but I will keep working on it and update it continuously as my knowledge and experience grow.
+
+***Thank you for your reading, happy learning.***
 
 ---
-*What's Next?*
+*What's coming next?*
 
 - Right now, I'm quite done with deployment process. What can be improve is to use **"Cloud Build"**, which will be focus later after DS, and DE parts.
 
@@ -1057,4 +1085,4 @@ Done! Now, you can push or pull request the code to the repository to trigger th
 
 - *Note New Idea: Deploy Airflow on VM (selected one cloud provider) to schedule ETL Data Pipeline and Model Training.*
 
-***Thank you for your reading, happy learning.***
+---
