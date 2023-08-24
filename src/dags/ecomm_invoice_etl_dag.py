@@ -10,8 +10,7 @@ from datetime import timedelta
 import requests
 from kaggle.api.kaggle_api_extended import KaggleApi
 import os
-import tempfile
-import shutil
+import zipfile
 from google.cloud import storage
 import logging
 
@@ -91,11 +90,11 @@ def extract_api_google():
     api.authenticate()
     api.dataset_download_files('carrie1/ecommerce-data', path='./data/')
 
-    # Extract the ZIP file to the temporary directory
-    temp_dir = tempfile.mkdtemp()  # Create a temporary directory
-    zip_path = './data/ecommerce-data.zip' # destination path
-    shutil.unpack_archive(zip_path, temp_dir, format='zip')
-    extracted_file_path = os.path.join(temp_dir, 'data.csv')
+    path_to_zip_file = './data/ecommerce-data.zip'
+    with zipfile.ZipFile(path_to_zip_file, "r") as zip_ref:
+        zip_ref.extractall('./data/')
+
+    extracted_file_path = os.path.join('./data/', 'data.csv')
 
     # upload to GCS
     destination_blob_name = "data_api_uncleaned.csv"
@@ -107,21 +106,21 @@ def extract_api_google():
 
     # remove created csv file from local
     # In order to not remove before aws load to s3
-    # os.remove(zip_path)
+    # os.remove(path_to_zip_file)
     logging.info(f"Completed extracting data from API loaded to {destination_blob_name}")
 
 
 default_args = {
-    "dag_id": "ecomm_invoice_etl_dag",
     "owner": "Ken",
     # "email": ["XXXXX"],
-    "start_date": datetime(2023, 8, 22),
+    "start_date": timezone.datetime(2023, 8, 22),
     "schedule": None, # or @daily
     # "retries": 3,
     # "retry_delay": timedelta(minutes=1),
 }
 
 with DAG(
+    dag_id= "ecomm_invoice_etl_dag",
     default_args=default_args,
     ) as dag:
     

@@ -9,6 +9,7 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 import awswrangler as wr
 import logging
 import psycopg2
+import zipfile
 
 aws_credentials_path = os.environ["AWS_CREDENTIALS_PATH"]
 aws_bucket = os.environ["AWS_BUCKET"]
@@ -60,7 +61,7 @@ def extract_database_aws():
     # Define the COPY command with the query, CSV format, and headers
     copy_command = f"COPY ({query}) TO STDOUT WITH CSV HEADER"
 
-    with open(csv_file, "w") as f:
+    with open(csv_file, "w", encoding='utf-8') as f: # use "w+" to create file if it not exist
         cursor.copy_expert(copy_command, file=f)
     # close cursor and connection
     cursor.close()
@@ -79,8 +80,10 @@ def extract_database_aws():
                         aws_access_key_id=_aws_access_key_id,
                         aws_secret_access_key=_aws_secret_access_key)
     
-    with open(f"{csv_file}", "rb") as f:
-        s3.upload_fileobj(f, aws_bucket, object_name)
+    with open(csv_file, "rb") as f:
+        # s3.upload_fileobj(f, aws_bucket, object_name)
+        s3.put_object(Bucket=aws_bucket, Key=object_name, Body=f)
+    f.close()
     
     os.remove(csv_file)
     logging.info(f"Completed extracting data from postgres database loaded to {object_name}")
@@ -92,11 +95,11 @@ def extract_api_aws():
     api.authenticate()
     api.dataset_download_files('carrie1/ecommerce-data', path='./data/')
 
-    # Extract the ZIP file to the temporary directory
-    temp_dir = tempfile.mkdtemp()  # Create a temporary directory
-    zip_path = './data/ecommerce-data.zip' # destination path
-    shutil.unpack_archive(zip_path, temp_dir, format='zip')
-    extracted_file_path = os.path.join(temp_dir, 'data.csv')
+    path_to_zip_file = './data/ecommerce-data.zip'
+    with zipfile.ZipFile(path_to_zip_file, "r") as zip_ref:
+        zip_ref.extractall('./data/')
+
+    extracted_file_path = os.path.join('./data/', 'data.csv')
 
     # authenticate upload to S3
     key = pd.read_csv(aws_credentials_path)
@@ -110,7 +113,7 @@ def extract_api_aws():
     object_name = 'data_api_uncleaned.csv'
     s3.upload_file(extracted_file_path, aws_bucket, object_name)
     # in case not remove before google task load to GCS
-    # os.remove(zip_path)
+    # os.remove(path_to_zip_file)
     logging.info(f"Completed extracting data from API loaded to {object_name}")
 
 
