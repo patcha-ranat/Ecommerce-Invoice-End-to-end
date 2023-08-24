@@ -2,8 +2,8 @@ version: '3'
 
 x-airflow-common:
   &airflow-common
-  image: apache/airflow:latest
-  user: "${AIRFLOW_UID}:0"
+  image: apache/airflow:2.6.2
+  user: "${AIRFLOW_UID}:${AIRFLOW_GID}"
   env_file: 
     - .env
   volumes:
@@ -96,6 +96,8 @@ services:
     container_name: airflow-init
     entrypoint: /bin/bash
     # yamllint disable rule:line-length
+    # user: "${AIRFLOW_UID}:${AIRFLOW_GID}"
+    user: "0:0"
     command:
       - -c
       - |
