@@ -609,7 +609,7 @@ Actually, we have to do the **EDA** (Exploratory Data Analysis) before loading d
 <details><summary>Data Characteristics</summary>
 <p>
 
-This part is mostly done with Python, since it's more flexible to do ad-hoc analysis. I used **Pandas** and **Matplotlib** to do the analysis.
+This part is mostly done with Python by **Pandas** and **Matplotlib**, because of its flexible.
 
 - `CustomerID` contains null values
     - fill null values with int 0 → for RFM, CustomerID 0 will be removed
@@ -672,8 +672,8 @@ What worth to mention are:
 
 A little note for future myself:
 - **Dashboard is about Storytelling**, so it's better to have a story in mind before creating the dashboard. It's not just about the data, but how to arrange the story from the data.
-- **It's crucial to know who are the audiences of the dashboard, and what is the objective of the dashboard**. So, we can select the right metrics, right data, and right visualization.
-- **Data model is very important**, it's the foundation of the dashboard. If the data model is not correct, the dashboard will not be correct. If the data model come in a good shape, the dashboard will be easier to create, and the data will be easier to analyze. (especially in aspect of **Time Intelligence**)
+- **It's crucial to know who are the audiences of the dashboard, and what the objective of the dashboard is**. So, we can select the right metrics, right data, and right visualization.
+- **Data model is very important**, it's the foundation of the dashboard. If the data model is incorrected, the dashboard will be incorrected also. If the data model come in a good shape, the dashboard will be easier to create, and the data will be easier to analyze. (especially in aspect of **Time Intelligence**)
 
 *Note: I will update the dashboard in the future, since it's not fully finished.*
 
@@ -716,9 +716,9 @@ First, we will form the RFM table based on customer transactions and add some mo
 - mean quantity items of each purchase
 - mean spending per month
 - frequency of purchase per month
-- refund rate
+- (refund rate)
 
-Eventually, we will get a new table that represents customers profile and their behavior.
+Eventually, we will get a new table that represents customers profile and their behavior, this table is a `rfm` variable in the code in [model.dev](model_dev.ipynb).
 
 *Note: The features we used to decribe the customer behavior is not limited to the features above, we can add more features that we think it might be useful for segmentation, but also should be interpretable for initiaing the campaigns and strategies, so some features, like standard deviation, might not be appropriate for this case.*
 
@@ -734,21 +734,31 @@ Then, we will use KMeans to segment customers into clusters. We will use **Elbow
 
 Then, we label the clusters to customer profile table which not scaled yet, so we can see the customer profile of each cluster with the original scale to make it more interpretable. We will use this table to find the criteria of the clusters as an input and validation set for the Decision Tree.
 
+References:
+- [Selecting the number of clusters with silhouette analysis on KMeans clustering](https://scikit-learn.org/stable/auto_examples/cluster/plot_kmeans_silhouette_analysis.html)
+- [Segmenting Customers using K-Means, RFM and Transaction Records](https://towardsdatascience.com/segmenting-customers-using-k-means-and-transaction-records-76f4055d856a)
+
 **Decision Tree**
 
-After that, we will use **Decision Tree** to find the criteria of the clusters to make the clustering result from KMeans become interpretable. I used **Random Search** with **Cross Validation** to find the best hyperparameters of the Decision Tree to make it the most accurate **resulting in accuracy 93.29% on test set, 93.97% on train set, macro averaged of F1 score 0.86, to clarify criteria of each cluster.**
+After that, we will use **Decision Tree** to find the criteria of the clusters to make the clustering result from KMeans become interpretable. I used **Random Search** with **Cross Validation** to find the best hyperparameters of the Decision Tree to make it the most accurate **resulting in accuracy 91.41% on test set, 94.11% on train set, macro averaged of F1 score 0.75, to clarify criteria of each cluster.**
 
 ![kmeans-tree](./src/Picture/kmeans-tree.png)
 
-***Note: The 93% accuracy doesn't mean we segmented the customers correctly by 93%**, because we can't be sure that Kmeans correctly 100% segmented the customers (and definitely, it didn't), but we can tell that the Decision Tree can explain the criteria of the clusters correctly by 93%, So we can take account of the criteria from the Decision Tree to cluster customer segmented to follow Kmeans result.*
+***Note: The 91% accuracy doesn't mean we segmented the customers correctly by 91%**, because we can't be sure that Kmeans correctly 100% segmented the customers (and definitely, it didn't), but we can tell that the Decision Tree can explain the criteria of the clusters correctly by 91% in generalization, So we can take account of the criteria from the Decision Tree to cluster customer segmented to follow Kmeans result.*
 
 **XGBoost**
 
-Finally, we will use **XGBoost** to find the most important features that influence the customer segments or important factors to develop the strategies. I also used **Random Search** with **Cross Validation** to find the best hyperparameters of XGBoost resulting in accuracy 97.65% on test set, 100% on train set, macro averaged of F1 score 0.97, to find the most important features (seem overfitting, but it's not a main focused).
+Finally, we will use **XGBoost** to find the most important features that influence the customer segments or important factors to develop the strategies. I also used **Random Search** with **Cross Validation** to find the best hyperparameters of XGBoost resulting in accuracy 97.76% on test set, 100% on train set, macro averaged of F1 score 0.77, to find the most important features (seem overfitting, but it's not a main focused).
 
-The most important features can be shown in the graph below:
+You may heard of feature importance from XGBoost that can describe which features are more influence to the model, but it's not effective enough due to its limitation, like how it treats the correlated features, how differently treats the categorical features and numerical features, and how it's not generalized to other models. So, I used **Permutation Feature Importance** instead, which is more generalized for choosing the most influence features to each cluster. Moreover, it can be used with any model, not just XGBoost.
 
-<img src="./src/Picture/xgb-importance-features.png" alt="xgb-importance-features" width="75%">
+References:
+- [Permutation feature importance - sklearn](https://scikit-learn.org/stable/modules/permutation_importance.html#permutation-importance)
+- [Permutation Importance vs Random Forest Feature Importance (MDI)](https://scikit-learn.org/stable/auto_examples/inspection/plot_permutation_importance.html#sphx-glr-auto-examples-inspection-plot-permutation-importance-py)
+
+The most important features for each cluster can be shown in the plot below:
+
+<img src="./src/Picture/permutation_feature_importance.png" alt="permutation_feature_importance" width="75%">
 
 Finally we can classify the customers into 10 clusters and explain the criteria of each cluster to the business.
 - **Cluster 0** : Bought less, not often, and small ticket size, I think this is a cluster of casual customers or one-time purchase customers.
@@ -812,6 +822,10 @@ We can interpret the result as:
 - the second row (or rule) is the same as the first row, but the consequent and antecedent are swapped, so we can watch the result from both sides
 - the third rule and so on, show the bundle of item that are frequently purchased together, these rules can be used to develop strategies such as cross-selling, product bundling.
 
+References:
+- [How To Perform Market Basket Analysis in Python - Jihargifari - Medium](https://medium.com/@jihargifari/how-to-perform-market-basket-analysis-in-python-bd00b745b106)
+- [Association Rule Mining using Market Basket Analysis - Sarit Maitra - Towards Data Science](https://towardsdatascience.com/market-basket-analysis-knowledge-discovery-in-database-simplistic-approach-dc41659e1558)
+
 ### 5.3 Recommendation System
 
 *in development . . .*
@@ -822,7 +836,7 @@ In this section, we will use **Time Series Forecasting** technique to predict fu
 
 In general, we use current features or features that already happened fed into the model to predict the sales as a target. But, the problem is, if we want to predict the sales of the next month, we don't have the records of the next month yet. So, we have to use the records of the past to predict the sales of the next month.
 
-Therefore, we have to perform feature engineering, transform data, create features to obtain the appropriate and effective features to predict the future sales. In this project, we will use **Lag Features** and **Rolling Window Statistics** to create features.
+Therefore, we have to perform feature engineering, transform data, create features to obtain the appropriate and effective features to predict the future sales. So, we will use **Lag Features** and **Rolling Window Statistics**.
 
 But how can we know how lag of the features and how many rolling window statistics should we use? first we can use **Auto-correlation** to find the optimal lag value or candidates to be used as lag features. Then, we can use **Cross-Validation** to find the optimal number of rolling window and the best candidate of lag features.
 
@@ -847,9 +861,17 @@ LightGBM | 4884.230 | 32.29%
 
 Even we can see that the prediction result can a bit capture the trend of the data, but the result is not good enough compared with **mean** of the target.
 
-I intended to **decompose** the data into trend, seasonality, and residual, then use them as features to predict the future sales to make it stationary **and also add moving average types** such as EMA (Exponential Moving Average) and LWMA (Linear Weighted Moving Average) to the model, to weight the recent data more than the old data. But, I think it's enough for now, I will update the model later.
+I intended to **decompose** the data into trend, seasonality, and residual, then use them as features to predict the future sales to make it stationary **and also add moving average types** such as EMA (Exponential Moving Average) and LWMA (Linear Weighted Moving Average) to the model, to weight the recent data more than the old data. Moreover, I want to test traditional statistical model such as ARIMA, and SARIMA. But, I think it's enough for now, I will update the model later.
 
 *In development . . .*
+
+References:
+- [How to Calculate Autocorrelation in Python?](https://www.geeksforgeeks.org/how-to-calculate-autocorrelation-in-python/)
+- [How to detect seasonality, forecast and fill gaps in time series using Fast Fourier Transform](https://fischerbach.medium.com/introduction-to-fourier-analysis-of-time-series-42151703524a)
+- [How To Apply Machine Learning To Demand Forecasting (Concept)](https://mobidev.biz/blog/machine-learning-methods-demand-forecasting-retail)
+- [All Moving Averages (SMA, EMA, SMMA, and LWMA)](https://srading.com/all-moving-averages-sma-ema-smma-and-lwma/)
+- [Finding Seasonal Trends in Time-Series Data with Python](https://towardsdatascience.com/finding-seasonal-trends-in-time-series-data-with-python-ce10c37aa861)
+- [Various Techniques to Detect and Isolate Time Series Components Using Python (Technical)](https://www.analyticsvidhya.com/blog/2023/02/various-techniques-to-detect-and-isolate-time-series-components-using-python/)
 
 ### 5.5 Customer Churn Prediction
 
@@ -939,7 +961,7 @@ For example, in the [deployment.Dockerfile](./deployment/deployment.Dockerfile),
 COPY ./deployment .
 ```
 
-Because the command meant to be executed via CLI having working directory in the root directory of the project, not the within `deployment` directory (and with a few research, I found that it's not possible to specify the path to copy the files from the parent directory, so we can tell that this is the right and the only way to be done).
+Because the command meant to be executed via CLI having working directory in the root directory of the project, not the within `deployment` directory (and with [a few research](https://stackoverflow.com/questions/24537340/docker-adding-a-file-from-a-parent-directory), I found that it's not possible to specify the path to copy the files from the parent directory, so we can tell that this is the right and the only way to be done).
 
 And when we execute the command, we have to be in the root directory of the project with CLI and use this command pattern:
 
@@ -1049,6 +1071,12 @@ Done! Now, you can push or pull request the code to the repository (with your sp
 
 This solution of encoding the service account key file as base64 is not the best practice regarding security aspect. There's another better approach I found which is called ["Keyless authentication"](https://cloud.google.com/blog/products/identity-security/enabling-keyless-authentication-from-github-actions), but it's much more complicated and requires more services invloved and many more steps to be done. So, as we are in the learning phase, I think this approach is enough for now.
 
+References:
+- [Deploy a Dockerized FastAPI App to Google Cloud Platform](https://towardsdatascience.com/deploy-a-dockerized-fastapi-app-to-google-cloud-platform-24f72266c7ef)
+- [Discover what Google Cloud Run is, how it works and how to get started with Cloud Run.](https://www.d3vtech.com/insights/the-ultimate-guide-to-google-cloud-run)
+- [How To Deploy and Test Your Models Using FastAPI and Google Cloud Run](https://towardsdatascience.com/how-to-deploy-and-test-your-models-using-fastapi-and-google-cloud-run-82981a44c4fe)
+- [Step-by-step Approach to Build Your Machine Learning API Using Fast API](https://towardsdatascience.com/step-by-step-approach-to-build-your-machine-learning-api-using-fast-api-21bd32f2bbdb)
+- [How to Build MLOps Pipelines with GitHub Actions [Step by Step Guide]](https://neptune.ai/blog/build-mlops-pipelines-with-github-actions-guide)
 ## 7. Conclusion
 
 From this project, we learned how to:
