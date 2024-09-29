@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 
+# put basemodels here
+
 app = FastAPI()
 
 @app.get("/")
@@ -31,4 +33,5 @@ async def get_customer(customer_id: int):
         }
     return response
 
+# for lcoal testing
 # bash: uvicorn api_app:app --reload 

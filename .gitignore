@@ -24,3 +24,6 @@ terraform.*
 
 # ML models
 *.pkl
+
+# notebook
+revise.ipynb

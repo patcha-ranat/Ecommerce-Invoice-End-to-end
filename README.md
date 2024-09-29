@@ -1,7 +1,7 @@
-# End-to-end E-commerce Demand Forecasting
+# End-to-end E-commerce - Dynamic Customer-Centric Profitability Management
 *Patcharanat P.*
 ```text
-Click "⋮≡" at top left to show the table of contents.
+Click "⋮≡" at top right to show the table of contents.
 ```
 **End-to-end Data project** in the e-commerce and retail industries covering the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analytic skills, and also how to implement them in the real world utilizing Business and Marketing knowledge.
 
@@ -9,7 +9,7 @@ Click "⋮≡" at top left to show the table of contents.
 
 It's crucial in nowadays to emphasize data existing and make the most use of it. **The project was created to practice and demonstrate the full process of data exploitation** covering setting up environments, ETL process, Web Scraping, Data Visualization, Machine Learning Model Development, Model Deployment using E-commerce data, and also extend to develop strategy and marketing campagin based on the data.
 
-## **Processes**:
+## **Table of Contents**:
 1. [Setting up Environment](#1-setting-up-environment)
     - 1.1 [Setting up Overall Services (containers)](#11-setting-up-overall-services-containers)
     - 1.2 [Intializing all Containers](#12-intializing-all-containers)
@@ -24,17 +24,21 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
     - [**Step to Reproduce Virtualization for Testing**](#step-to-reproduce-virtualization-for-testing)
     - 2.4 [Extend to AWS](#24-extend-to-aws)
     - 2.5 [Detail of the ETL Code](#25-detail-of-the-etl-code)
-3. [Web Scraping](#3-web-scraping)
+<!-- 3. [Web Scraping](#3-web-scraping) -->
+3. Web Scraping
 4. [EDA and Data Visualization](#4-eda-and-data-visualization)
     - 4.1 [EDA](#41-eda)
     - 4.2 [PowerBI Dashboard](#42-powerbi-dashboard)
 5. [Machine Learning Model Development](#5-machine-learning-model-development)
     - 5.1 [Customer Segmentation By RFM, KMeans, and Tree-based Model](#51-customer-segmentation-by-rfm-kmeans-and-tree)
     - 5.2 [Market Basket Analysis](#52-market-basket-analysis)
-    - 5.3 [Recommendation System](#53-recommendation-system)
-    - 5.4 [Demand Forecasting](#54-demand-forecasting)
-    - 5.5 [Customer Churn Prediction](#55-customer-churn-prediction)
-    - 5.6 [Price Analysis and Optimization](#56-price-analysis-and-optimization)
+    - 5.3 [Demand Forecasting](#54-demand-forecasting)
+    - 5.4 Recommendation System
+    - 5.5 Customer Churn Prediction
+    - 5.6 Price Analysis and Optimization
+    <!-- - 5.4 [Recommendation System](#53-recommendation-system) -->
+    <!-- - 5.5 [Customer Churn Prediction](#55-customer-churn-prediction) -->
+    <!-- - 5.6 [Price Analysis and Optimization](#56-price-analysis-and-optimization) -->
 6. [Model Deployment and Monitoring](#6-model-deployment-and-monitoring)
     - 6.1 [Exporting the Models](#61-exporting-the-models)
     - 6.2 [Designing and Creating an API Web Service](#62-designing-and-creating-an-api-web-service)
@@ -42,10 +46,11 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
     - 6.4 [Deploying the Model to the Cloud Environment](#64-deploying-the-model-to-the-cloud-environment)
     - 6.3 [*(Optional)* Automating the Deployment Process](#65-automating-the-deployment-process-optional)
 7. [Conclusion](#7-conclusion)
+
 ## **Project Overview**
 
 ![project-overview](./src/Picture/project-overview.png)
-*Note: this project will also include developing strategy and marketing campagin based on the data.*
+*Note: this project will also include developing strategy and marketing campagin based on the data and some parts of the project are not fully finished yet*
 
 ## **Tools**:
 - Sources
@@ -84,7 +89,7 @@ Dataset: [E-Commerce Data - Kaggle](https://www.kaggle.com/datasets/carrie1/ecom
 - Get a credentials file from kaggle and activate the token for API.
 - Have Google Account being able to use google cloud services.
 
-*The credentials are hidden in this project*
+*The credentials are hidden in this project by `.gitignore`*
 
 ## 1. Setting up Environment
 
@@ -290,14 +295,8 @@ Do the following:
 - Going to `IAM` page in `IAM & Admin` section > Edit principal for your created service account > Add Roles
 - Add the following roles:
     - BigQuery Admin
-    - BigQuery Data Editor
-    - BigQuery Data Owner
-    - BigQuery Job User
-    - BigQuery User
     - Storage Admin
     - Storage Object Admin
-    - Storage Object Creator
-    - Storage Object Viewer
 - And then, save your changes.
 
 ***Note**: if you want to add your project to github, make sure you are working in private repo, or add it to `.gitignore` file*
@@ -340,14 +339,14 @@ As you can see it's quite inconvenient that we have to create all of these resou
 
 **Terraform**
 
-We can achieve creating the bucket and the warehouse by **"Terraform"**, which is a better way to create and manage cloud resources reducing error when reproduce the process and proper for production stage. you can see the code in `terraform` folder, consists of [main.tf](terraform/main.tf) and [variables.tf](terraform/variables.tf). Terraform make it easier to create and delete or managing the resources in this demonstration with a few bash commands.
+We can achieve creating the bucket and the warehouse by **"Terraform"**, which is a better way to create and manage cloud resources reducing error-prone when reproducing the process and proper for production stage. you can see the code in `terraform` folder, consists of [main.tf](terraform/main.tf) and [variables.tf](terraform/variables.tf). Terraform make it easier to create and delete or managing the resources in this demonstration with a few bash commands.
 
 The [`main.tf`](./terraform/main.tf) file, using some variables from [`variables.tf`](./terraform/variables.tf) file, will produce the following resources:
 - 1 data lake bucket
 - 1 Bigquery dataset
 - 1 Bigquery table
 
-To use terraform, you need to install Terraform in your local machine (+add to PATH), and have your google credentials (service account credentials) as a json file within `"credentials"` directory in the same level of your working directory. Then, you can run terraform commands in your terminal **in your terraform working directory**.
+To use terraform, you need to install Terraform in your local machine (+add to PATH), and have your google credentials (service account credentials) as a json file within `"credentials"` directory located in the same level of your root working directory. Then, you can run terraform commands in your terminal **in your terraform working directory**.
 
 ```bash
 terraform init
@@ -826,11 +825,7 @@ References:
 - [How To Perform Market Basket Analysis in Python - Jihargifari - Medium](https://medium.com/@jihargifari/how-to-perform-market-basket-analysis-in-python-bd00b745b106)
 - [Association Rule Mining using Market Basket Analysis - Sarit Maitra - Towards Data Science](https://towardsdatascience.com/market-basket-analysis-knowledge-discovery-in-database-simplistic-approach-dc41659e1558)
 
-### 5.3 Recommendation System
-
-*in development . . .*
-
-### 5.4 Demand Forecasting
+### 5.3 Demand Forecasting
 
 In this section, we will use **Time Series Forecasting** technique to predict future values based on the past values of the data. we will use some input from the past as features to predict the future sales.
 
@@ -872,6 +867,10 @@ References:
 - [All Moving Averages (SMA, EMA, SMMA, and LWMA)](https://srading.com/all-moving-averages-sma-ema-smma-and-lwma/)
 - [Finding Seasonal Trends in Time-Series Data with Python](https://towardsdatascience.com/finding-seasonal-trends-in-time-series-data-with-python-ce10c37aa861)
 - [Various Techniques to Detect and Isolate Time Series Components Using Python (Technical)](https://www.analyticsvidhya.com/blog/2023/02/various-techniques-to-detect-and-isolate-time-series-components-using-python/)
+
+### 5.3 Recommendation System
+
+*in development . . .*
 
 ### 5.5 Customer Churn Prediction
 
