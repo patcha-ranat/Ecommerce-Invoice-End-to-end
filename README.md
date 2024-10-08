@@ -1,13 +1,13 @@
-# End-to-end E-commerce - Dynamic Customer-Centric Profitability Management
+# End-to-end E-commerce Data Project - Machine Learning-Driven Dynamic Personalized Marketing Management
 *Patcharanat P.*
 ```text
 Click "⋮≡" at top right to show the table of contents.
 ```
-**End-to-end Data project** in the e-commerce and retail industries covering the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analytic skills, and also how to implement them in the real world utilizing Business and Marketing knowledge.
+**End-to-end Data project** in the e-commerce and retail industries covering the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analytic skills, and how to automate managing ML lifecycle (MLOps).
 
 ## **Context**
 
-It's crucial in nowadays to emphasize data existing and make the most use of it. **The project was created to practice and demonstrate the full process of data exploitation** covering setting up environments, ETL process, Web Scraping, Data Visualization, Machine Learning Model Development, Model Deployment using E-commerce data, and also extend to develop strategy and marketing campagin based on the data.
+It's crucial in nowadays to emphasize data existing and make the most use of it. **The project was created to practice and demonstrate the full process of data exploitation** covering setting up environments, ETL process, Web Scraping, Data Visualization, Machine Learning Model Development, and Model Deployment using E-commerce data.
 
 ## **Table of Contents**:
 1. [Setting up Environment](#1-setting-up-environment)
