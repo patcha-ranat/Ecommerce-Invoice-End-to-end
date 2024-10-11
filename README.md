@@ -3,7 +3,7 @@
 ```text
 Click "⋮≡" at top right to show the table of contents.
 ```
-**End-to-end Data project** in the e-commerce and retail industries covering the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analytic skills, and how to automate managing ML lifecycle (MLOps).
+**End-to-end Data project** in the e-commerce and retail industries covering the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analytic skills, and how to automate ML lifecycle management (MLOps).
 
 ## **Context**
 
@@ -32,11 +32,11 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
 5. [Machine Learning Model Development](#5-machine-learning-model-development)
     - 5.1 [Customer Segmentation By RFM, KMeans, and Tree-based Model](#51-customer-segmentation-by-rfm-kmeans-and-tree)
     - 5.2 [Market Basket Analysis](#52-market-basket-analysis)
-    - 5.3 [Demand Forecasting](#54-demand-forecasting)
+    - 5.3 [Demand Forecasting](#53-demand-forecasting)
     - 5.4 Recommendation System
     - 5.5 Customer Churn Prediction
     - 5.6 Price Analysis and Optimization
-    <!-- - 5.4 [Recommendation System](#53-recommendation-system) -->
+    <!-- - 5.4 [Recommendation System](#54-recommendation-system) -->
     <!-- - 5.5 [Customer Churn Prediction](#55-customer-churn-prediction) -->
     <!-- - 5.6 [Price Analysis and Optimization](#56-price-analysis-and-optimization) -->
 6. [Model Deployment and Monitoring](#6-model-deployment-and-monitoring)
@@ -868,7 +868,7 @@ References:
 - [Finding Seasonal Trends in Time-Series Data with Python](https://towardsdatascience.com/finding-seasonal-trends-in-time-series-data-with-python-ce10c37aa861)
 - [Various Techniques to Detect and Isolate Time Series Components Using Python (Technical)](https://www.analyticsvidhya.com/blog/2023/02/various-techniques-to-detect-and-isolate-time-series-components-using-python/)
 
-### 5.3 Recommendation System
+### 5.4 Recommendation System
 
 *in development . . .*
 
@@ -1070,7 +1070,7 @@ Done! Now, you can push or pull request the code to the repository (with your sp
 
 This solution of encoding the service account key file as base64 is not the best practice regarding security aspect. There's another better approach I found which is called ["Keyless authentication"](https://cloud.google.com/blog/products/identity-security/enabling-keyless-authentication-from-github-actions), but it's much more complicated and requires more services invloved and many more steps to be done. So, as we are in the learning phase, I think this approach is enough for now.
 
-References:
+**References:**
 - [Deploy a Dockerized FastAPI App to Google Cloud Platform](https://towardsdatascience.com/deploy-a-dockerized-fastapi-app-to-google-cloud-platform-24f72266c7ef)
 - [Discover what Google Cloud Run is, how it works and how to get started with Cloud Run.](https://www.d3vtech.com/insights/the-ultimate-guide-to-google-cloud-run)
 - [How To Deploy and Test Your Models Using FastAPI and Google Cloud Run](https://towardsdatascience.com/how-to-deploy-and-test-your-models-using-fastapi-and-google-cloud-run-82981a44c4fe)
@@ -1094,22 +1094,9 @@ This is the biggest personal project I've ever done so far, and I learned a lot 
 ---
 *What's coming next?*
 
-- Right now, I'm quite done with deployment process. What can be improve is to use **"Cloud Build"**, which will be focus later after DS, and DE parts.
-
-- Creating FastAPI script to deploy the model is the main focus at the moment.
-
-- The Demand Forecasting Model is not working successfully. So, it will be the main focus to improve the model performance after creating the API.
-
-- Churn Prediction Model is the next main focus after Demand Forecasting Model.
-
-- Extending to Redshift cluster is not fully finished yet, so I will continue to work on it and extend to Microsoft Azure after.
-
-- The ETL pipeline is not fully finished yet in the part of loading data to the local target Postgres database. So, I will add it after extending to Azure.
-
-- Price Analysis and Recommendation System are the next main focus after ETL pipeline.
-
-- Improving PowerBI Dashboard to analyze the business is the last main focus after Recommendation System.
-
-- *Note New Idea: Deploy Airflow on VM (selected one cloud provider) to schedule ETL Data Pipeline and Model Training.*
+- Productionalization of FastAPI together with ML solution as ML System enabling MLOps.
+- Extending to Redshift cluster is not fully finished, so I will continue to work on it and then extend to Microsoft Azure.
+- The ETL pipeline in the part of loading data to the local target Postgres database is not fully finished.
+- Recommendation System, Churn prediction Model, and Price Analysis.
 
 ---

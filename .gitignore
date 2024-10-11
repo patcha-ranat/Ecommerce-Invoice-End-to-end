@@ -30,3 +30,7 @@ revise.ipynb
 
 # environment
 pyenv
+
+# local environment testing
+*.db
+*.duckdb
