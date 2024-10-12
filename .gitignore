@@ -27,6 +27,7 @@ terraform.*
 
 # notebook
 revise.ipynb
+unit_test.ipynb
 
 # environment
 pyenv
