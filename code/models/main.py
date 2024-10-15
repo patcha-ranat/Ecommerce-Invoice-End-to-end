@@ -1,25 +1,5 @@
 import argparse
 import logging
-import os
-from typing import Any
-
-import pandas as pd
-import duckdb
-
-from abstract import BaseMlService
-
-
-class CustomerProfilingProcessor(BaseMlService):
-    pass
-
-
-class CustomerSegmentationProcessor(BaseMlService):
-    pass
-
-
-# Main Processor
-class MlProcessor:
-    pass
 
 
 def main():

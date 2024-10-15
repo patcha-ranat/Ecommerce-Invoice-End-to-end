@@ -5,7 +5,7 @@ import logging
 import pandas as pd
 import duckdb
 
-from abstract import AbstractIOReaderWriter
+from abstract import AbstractIOReaderWriter, AbstractIOProcessor
 
 
 class BaseIOReaderWriter(AbstractIOReaderWriter):
@@ -129,7 +129,7 @@ class DockerDatabaseInputReader(BaseIOReaderWriter):
     pass
 
 
-class InputProcessor:
+class InputProcessor(AbstractIOProcessor):
     """
     Entrypoint for InputReader instance, selecting connection/environment type by given parameters.
     """
@@ -218,7 +218,7 @@ class DockerDatabaseOutputWriter(BaseIOReaderWriter):
     pass
 
 
-class OutputProcessor:
+class OutputProcessor(AbstractIOProcessor):
     def __init__(
         self, target_type: str, method: str, output_path: str, df: pd.DataFrame
     ):
