@@ -2,6 +2,10 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import RobustScaler
 from sklearn.cluster import KMeans
+from sklearn.model_selection import RandomizedSearchCV, train_test_split
+from lightgbm import LGBMClassifier
+from sklearn.metrics import f1_score
+from sklearn.inspection import permutation_importance
 
 from abstract import AbstractMLService, AbstractMLProcessor
 
@@ -278,7 +282,153 @@ class CustomerSegmentationProcessor(BaseMLService):
 
 class ClusterInterpretationProcessor(BaseMLService):
     """LightGBM"""
-    pass
+    def __init__(self):
+        super().__init__()
+        self.X: pd.DataFrame
+        self.y: pd.Series
+
+    def split_data(self, df: pd.DataFrame, test_size: float = 0.2) -> tuple[pd.DataFrame | pd.Series]:
+        """Input: enriched_customer_profile with the cluster column"""
+        self.X = df.drop(columns=["CustomerID", "cluster"])
+        self.y = df["cluster"]
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            self.X, 
+            self.y, 
+            test_size=test_size, 
+            random_state=0
+        )
+
+        return X_train, X_test, y_train, y_test
+    
+    def train_interpreter(self, X_train, y_train) -> RandomizedSearchCV:
+        model = LGBMClassifier(verbose=-1)
+        param_dist = {
+            "n_estimators": [100, 200, 300, 500],
+            "learning_rate": [0.1, 0.3, 0.5],
+            "max_depth": [6, 15],
+            "num_leaves": [63, 255],
+            "lambda_l1": [0.5, 1],
+            "lambda_l2": [0, 0.5],
+            "min_data_in_leaf": [20, 500],
+            "max_bin": [127, 255],
+            "feature_fraction": [1],
+            "subsample": [0.5, 1]
+        }
+
+        search = RandomizedSearchCV(
+            estimator=model,
+            param_distributions=param_dist,
+            cv=10,
+            scoring="f1_macro",
+            random_state=0
+        )
+        search.fit(X_train, y_train)
+        
+        return search
+
+    def eval_train_interpreter(
+            self, 
+            trained_search: RandomizedSearchCV, 
+            X_test: pd.DataFrame,
+            y_test: pd.DataFrame
+        ) -> tuple:
+        # get search output
+        best_params = trained_search.best_params_
+        best_estimator = trained_search.best_estimator_
+        
+        
+        y_pred = best_estimator.predict(X_test)
+        
+        eval_score = f1_score(
+            y_true=y_test,
+            y_pred=y_pred,
+            average="macro"
+        )
+
+        return best_estimator, best_params, eval_score
+    
+    def interpret_cluster(self, tuned_model: LGBMClassifier) -> dict:
+        """Interpret Cluster Behavior by permutation feature importance using `enriched_customer_profile`"""
+        # calculate feature importance score for each cluster and each feature
+        cluster_results = {}
+        for target in self.y.unique():
+            result = permutation_importance(
+                estimator = tuned_model, 
+                X = self.X[self.y == target],
+                y = self.y[self.y == target],
+                scoring="f1_macro",
+                n_repeats=5,
+                random_state=0
+            )
+            cluster_results[target] = result
+        
+        # map top 5 important feature names to clusters
+        mapped_cluster_factor: list = []
+        for cluster, importance_score in cluster_results.items():
+            # find top 5 important feature for each cluster considered by important score
+            sorted_importances_idx = importance_score["importances_mean"].argsort()
+            top_5_factor = list(self.X.columns[sorted_importances_idx][::-1][:5])
+            feature_importance = np.round(importance_score["importances_mean"][sorted_importances_idx][::-1][:5], 4)
+            
+            # prepare as a DataFrame input
+            mapped_cluster_factor.append({
+                "cluster": cluster,
+                "important_feature": top_5_factor,
+                "score": feature_importance
+            })
+
+        # keep only matter features (exclude importance score 0)
+        post_mapped_cluster_factor: list = []
+        for cluster in mapped_cluster_factor:
+            if (cluster["score"] == 0).sum() == 5: # top features
+                continue
+            else:
+                # keep only matter features
+                valid_features = (cluster["score"] != 0).sum()
+                valid_columns = cluster["important_feature"][:valid_features]
+                valid_scores = cluster["score"][:valid_features]
+
+                post_mapped_cluster_factor.append({
+                    "cluster": cluster["cluster"],
+                    "important_feature": valid_columns,
+                    "score": valid_scores
+                })
+        
+        # identify anomaly cluster
+        all_cluster = set([cluster["cluster"] for cluster in mapped_cluster_factor])
+        cluster_anomaly_removed = set([cluster["cluster"] for cluster in post_mapped_cluster_factor])
+        anomaly_cluster = list(all_cluster - cluster_anomaly_removed)
+
+        # build output DataFrame
+        cluster_df = pd.DataFrame(mapped_cluster_factor).explode(column=["important_feature", "score"])
+        cluster_df["rank_important"] = cluster_df.groupby("cluster").cumcount()+1
+
+        cluster_df["is_anomaly"] = cluster_df.apply({
+            "cluster": lambda x: True if x in anomaly_cluster else False
+        })
+        print("cluster behavior can't be identified: anomaly cluster")
+        print(anomaly_cluster)
+        print("dependency check for cluster = 3 -> alert")
+
+        return
+    
+    def export_output(self.):
+        # data models
+        cluster_df.to_parquet("data/customer_cluster.parquet")
+        rfm.to_parquet("data/customer_profile_rfm.parquet")
+
+        # ml models
+        with open("models/lgbm_cluster_interpreter_v1.bin", "wb") as f_out:
+            pickle.dump(tuned_model, f_out)
+            f_out.close()
+
+        with open("models/kmeans_cluster_classifier_v1.bin", "wb") as f_out:
+            pickle.dump(kmeans, f_out)
+            f_out.close()
+
+    def process():
+        pass
 
 
 class MlProcessor(AbstractMLProcessor):
