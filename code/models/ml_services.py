@@ -1,11 +1,16 @@
+from typing import Any
+from datetime import datetime
+import json
+
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import RobustScaler
 from sklearn.cluster import KMeans
 from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from lightgbm import LGBMClassifier
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score
 from sklearn.inspection import permutation_importance
+import pickle
 
 from abstract import AbstractMLService, AbstractMLProcessor
 
@@ -287,6 +292,32 @@ class ClusterInterpretationProcessor(BaseMLService):
         self.X: pd.DataFrame
         self.y: pd.Series
 
+    @staticmethod
+    def log_evaluation(y_true, y_pred, float_point: int = 4) -> dict:
+        eval_dict = {
+            "date": datetime.today().date(),
+            "f1_score_macro": round(f1_score(y_true=y_true, y_pred=y_pred, average="macro"), float_point),
+            "accuracy": round(accuracy_score(y_true=y_true, y_pred=y_pred), float_point),
+            "precision": round(precision_score(y_true=y_true, y_pred=y_pred, average="macro"), float_point),
+            "recall": round(recall_score(y_true=y_true, y_pred=y_pred, average="macro"), float_point),
+            "interpreter_model": None,
+            "interpreter_model_version": None,
+            "interpreter_train_date": None
+        }
+
+        # eval_df = pd.DataFrame({
+        #     "date": datetime.today().date(),
+        #     "f1_score_macro": round(f1_score(y_true=y_true, y_pred=y_pred, average="macro"), float_point),
+        #     "accuracy": round(accuracy_score(y_true=y_true, y_pred=y_pred), float_point),
+        #     "precision": round(precision_score(y_true=y_true, y_pred=y_pred, average="macro"), float_point),
+        #     "recall": round(recall_score(y_true=y_true, y_pred=y_pred, average="macro"), float_point),
+        #     "interpreter_model": None,
+        #     "interpreter_model_version": None,
+        #     "interpreter_train_date": None
+        # }, index=[0])
+
+        return eval_dict
+
     def split_data(self, df: pd.DataFrame, test_size: float = 0.2) -> tuple[pd.DataFrame | pd.Series]:
         """Input: enriched_customer_profile with the cluster column"""
         self.X = df.drop(columns=["CustomerID", "cluster"])
@@ -300,7 +331,7 @@ class ClusterInterpretationProcessor(BaseMLService):
         )
 
         return X_train, X_test, y_train, y_test
-    
+ 
     def train_interpreter(self, X_train, y_train) -> RandomizedSearchCV:
         model = LGBMClassifier(verbose=-1)
         param_dist = {
@@ -337,19 +368,20 @@ class ClusterInterpretationProcessor(BaseMLService):
         best_params = trained_search.best_params_
         best_estimator = trained_search.best_estimator_
         
-        
         y_pred = best_estimator.predict(X_test)
         
-        eval_score = f1_score(
+        eval_scores = self.log_evaluation(
             y_true=y_test,
             y_pred=y_pred,
-            average="macro"
+            float_point=4
         )
 
-        return best_estimator, best_params, eval_score
+        return best_estimator, best_params, eval_scores
     
     def interpret_cluster(self, tuned_model: LGBMClassifier) -> dict:
         """Interpret Cluster Behavior by permutation feature importance using `enriched_customer_profile`"""
+        # TODO: separate this function to mutiple methods
+
         # calculate feature importance score for each cluster and each feature
         cluster_results = {}
         for target in self.y.unique():
@@ -412,24 +444,41 @@ class ClusterInterpretationProcessor(BaseMLService):
         print("dependency check for cluster = 3 -> alert")
 
         return
-    
-    def export_output(self.):
-        # data models
-        cluster_df.to_parquet("data/customer_cluster.parquet")
-        rfm.to_parquet("data/customer_profile_rfm.parquet")
-
-        # ml models
-        with open("models/lgbm_cluster_interpreter_v1.bin", "wb") as f_out:
-            pickle.dump(tuned_model, f_out)
-            f_out.close()
-
-        with open("models/kmeans_cluster_classifier_v1.bin", "wb") as f_out:
-            pickle.dump(kmeans, f_out)
-            f_out.close()
 
     def process():
         pass
 
 
 class MlProcessor(AbstractMLProcessor):
-    pass
+    def __init__(self):
+        super().__init__()
+
+    def export_output(
+            self,
+            cluster_df: pd.DataFrame,
+            output_df: pd.DataFrame,
+            cluster_model: KMeans | Any,
+            interpreter: LGBMClassifier | Any,
+            interpreter_metrics: dict,
+        ) -> None:
+        # data models
+        cluster_df.to_parquet("data/customer_cluster.parquet")
+        output_df.to_parquet("data/customer_profile_rfm.parquet")
+
+        # artifact
+        with open("data/interpreter_metrics.json", "w") as f:
+            json.dump(interpreter_metrics, f, indent=4)
+            f.close()
+
+        # ml models
+        with open("models/kmeans_cluster_classifier_v1.bin", "wb") as f_out:
+            pickle.dump(cluster_model, f_out)
+            f_out.close()
+
+        with open("models/lgbm_cluster_interpreter_v1.bin", "wb") as f_out:
+            pickle.dump(interpreter, f_out)
+            f_out.close()
+
+    def process():
+        """Wrapper Orchestrate all processes and ml services"""
+        pass
