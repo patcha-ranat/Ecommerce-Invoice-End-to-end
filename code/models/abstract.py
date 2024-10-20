@@ -42,21 +42,20 @@ class AbstractMLService(ABC):
     """Abstract class for managing ml-related processes"""
 
     @abstractmethod
-    def train(self):
+    def get_input(self):
+        """Get/parse input dataFrame between ML services"""
         pass
 
     @abstractmethod
-    def retrain(self):
-        pass
-
-    @abstractmethod
-    def inference(self):
+    def process(self):
+        """Orchestrate all the processes within a service"""
         pass
 
 
 class AbstractMLProcessor(ABC):
-    """Abstract class as an entrypoint for choosing a type of ML Service, then parse parameters to them"""
+    """Abstract class as an entrypoint to orchestrateall services, then parse parameters to them"""
 
     @abstractmethod
     def process(self):
+        """Orchestrate all the processes between ML services"""
         pass

@@ -1,6 +1,6 @@
 from typing import Any
 from datetime import datetime
-import json
+import logging
 
 import pandas as pd
 import numpy as np
@@ -10,30 +10,22 @@ from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from lightgbm import LGBMClassifier
 from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score
 from sklearn.inspection import permutation_importance
-import pickle
 
 from abstract import AbstractMLService, AbstractMLProcessor
 
 
-class BaseMLService(AbstractMLService):
+class CustomerProfilingService(AbstractMLService):
+    """RFM"""
     def __init__(self):
         super().__init__()
-
-    def etc_method():
-        pass
-
-class CustomerProfilingProcessor(BaseMLService):
-    """RFM"""
-    def __init__(
-        self, 
-        input_df: pd.DataFrame
-    ):
-        super().__init__()
-        self.input_df = input_df
-        self.sample_df = input_df.copy()
-        self.unique_invoice: pd.DataFrame | None = None
-        self.customer_profile: pd.DataFrame | None = None
+        self.df: pd.DataFrame
+        self.unique_invoice: pd.DataFrame
+        self.customer_profile: pd.DataFrame
     
+    def get_input(self, df: pd.DataFrame) -> None:
+        self.df = df.copy()
+        return None
+
     def drop_anonymous(self, sample_df: pd.DataFrame) -> pd.DataFrame:
         """Drop CustomerID = '0' from sample DataFrame"""
         anonymous_customer_index = sample_df[sample_df['CustomerID'] == 0].index
@@ -75,7 +67,7 @@ class CustomerProfilingProcessor(BaseMLService):
         monetary_df = sample_df.groupby('CustomerID')["total_spend"].sum().reset_index().rename({'total_spend': 'monetary'}, axis=1)
         return monetary_df
 
-    def process_rfm(self, rfm_dfs: list[pd.DataFrame]) -> pd.DataFrame:
+    def merge_rfm(self, rfm_dfs: list[pd.DataFrame]) -> pd.DataFrame:
         """Merge all rfm properties into a DataFrame as customer_profile DataFrame"""
         customer_profile = rfm_dfs[0].merge(rfm_dfs[1], on='CustomerID').merge(rfm_dfs[2], on='CustomerID')
         self.customer_profile = customer_profile
@@ -158,13 +150,13 @@ class CustomerProfilingProcessor(BaseMLService):
                                                     .merge(per_month, on='CustomerID')
         return enriched_customer_profile
 
-    def preprocess(self) -> pd.DataFrame:
+    def process(self) -> pd.DataFrame:
         """Entrypoint for data preprocessing"""
         df = self.drop_anonymous(sample_df=self.sample_df)
         recency_df = self.get_recency(sample_df=df)
         frequency_df = self.get_frequency(sample_df=df)
         monetary_df = self.get_monetary(sample_df=df)
-        customer_profile = self.process_rfm(rfm_dfs=[recency_df, frequency_df, monetary_df])
+        customer_profile = self.merge_rfm(rfm_dfs=[recency_df, frequency_df, monetary_df])
         enriched_customer_profile = self.feature_en_additional(
             customer_profile=customer_profile,
             sample_df=df
@@ -172,7 +164,7 @@ class CustomerProfilingProcessor(BaseMLService):
         return enriched_customer_profile
 
 
-class CustomerSegmentationProcessor(BaseMLService):
+class CustomerSegmentationService(AbstractMLService):
     """Kmeans"""
     def __init__(
         self,
@@ -180,7 +172,7 @@ class CustomerSegmentationProcessor(BaseMLService):
     ):
         super().__init__()
         self.df = df
-        self.scaler: RobustScaler | None
+        self.scaler: RobustScaler
 
     def scale(self, df: pd.DataFrame) -> tuple[pd.DataFrame, RobustScaler]:
         """
@@ -285,10 +277,11 @@ class CustomerSegmentationProcessor(BaseMLService):
         return output_df, trained_kmeans, scaler
 
 
-class ClusterInterpretationProcessor(BaseMLService):
+class ClusterInterpretationService(AbstractMLService):
     """LightGBM"""
-    def __init__(self):
+    def __init__(self, df: pd.DataFrame):
         super().__init__()
+        self.df = df
         self.X: pd.DataFrame
         self.y: pd.Series
 
@@ -358,7 +351,7 @@ class ClusterInterpretationProcessor(BaseMLService):
         
         return search
 
-    def eval_train_interpreter(
+    def eval_trained_interpreter(
             self, 
             trained_search: RandomizedSearchCV, 
             X_test: pd.DataFrame,
@@ -378,12 +371,9 @@ class ClusterInterpretationProcessor(BaseMLService):
 
         return best_estimator, best_params, eval_scores
     
-    def interpret_cluster(self, tuned_model: LGBMClassifier) -> dict:
-        """Interpret Cluster Behavior by permutation feature importance using `enriched_customer_profile`"""
-        # TODO: separate this function to mutiple methods
-
-        # calculate feature importance score for each cluster and each feature
-        cluster_results = {}
+    def calculate_important_score(self, tuned_model: LGBMClassifier) -> dict:
+        """Calculate feature importance score for each cluster and each feature"""
+        cluster_results: dict = {}
         for target in self.y.unique():
             result = permutation_importance(
                 estimator = tuned_model, 
@@ -395,7 +385,10 @@ class ClusterInterpretationProcessor(BaseMLService):
             )
             cluster_results[target] = result
         
-        # map top 5 important feature names to clusters
+        return cluster_results
+
+    def map_feature_importance(self, cluster_results: dict[str, dict]) -> list:
+        """Find top 5 important feature for each cluster considered by important score"""
         mapped_cluster_factor: list = []
         for cluster, importance_score in cluster_results.items():
             # find top 5 important feature for each cluster considered by important score
@@ -409,8 +402,17 @@ class ClusterInterpretationProcessor(BaseMLService):
                 "important_feature": top_5_factor,
                 "score": feature_importance
             })
+        
+        return mapped_cluster_factor
 
-        # keep only matter features (exclude importance score 0)
+    def build_explode_cluster_df(self, mapped_cluster_factor: list[dict]) -> pd.DataFrame:
+        """Build output DataFrame with all clusters: build_explode_important_feature_score_rank"""
+        cluster_df = pd.DataFrame(mapped_cluster_factor).explode(column=["important_feature", "score"])
+        cluster_df["rank_important"] = cluster_df.groupby("cluster").cumcount()+1
+        return cluster_df
+    
+    def exclude_unimportant_feature(self, mapped_cluster_factor: list[dict]) -> list:
+        """Keep only matter features (exclude importance score 0)"""
         post_mapped_cluster_factor: list = []
         for cluster in mapped_cluster_factor:
             if (cluster["score"] == 0).sum() == 5: # top features
@@ -426,32 +428,65 @@ class ClusterInterpretationProcessor(BaseMLService):
                     "important_feature": valid_columns,
                     "score": valid_scores
                 })
+
+        return post_mapped_cluster_factor
+    
+    def identify_anomaly_cluster(self, cluster_df: pd.DataFrame, mapped_cluster_factor: list[dict]) -> tuple[pd.DataFrame, bool]:
+        # prepare a component
+        post_mapped_cluster_factor = self.exclude_unimportant_feature(mapped_cluster_factor=mapped_cluster_factor)
         
         # identify anomaly cluster
-        all_cluster = set([cluster["cluster"] for cluster in mapped_cluster_factor])
-        cluster_anomaly_removed = set([cluster["cluster"] for cluster in post_mapped_cluster_factor])
-        anomaly_cluster = list(all_cluster - cluster_anomaly_removed)
+        if len(post_mapped_cluster_factor) == len(mapped_cluster_factor):
+            logging.info("Anomaly cluster is not found")
+            cluster_df["is_anomaly"] = False
+            is_anomaly_exist = False
+        else:
+            logging.warning("Anomaly cluster is found")
+            all_cluster = set([cluster["cluster"] for cluster in mapped_cluster_factor])
+            cluster_anomaly_removed = set([cluster["cluster"] for cluster in post_mapped_cluster_factor])
+            anomaly_cluster = list(all_cluster - cluster_anomaly_removed)
 
-        # build output DataFrame
-        cluster_df = pd.DataFrame(mapped_cluster_factor).explode(column=["important_feature", "score"])
-        cluster_df["rank_important"] = cluster_df.groupby("cluster").cumcount()+1
+            cluster_df["is_anomaly"] = cluster_df.apply({
+                "cluster": lambda x: True if x in anomaly_cluster else False
+            })
 
-        cluster_df["is_anomaly"] = cluster_df.apply({
-            "cluster": lambda x: True if x in anomaly_cluster else False
-        })
-        print("cluster behavior can't be identified: anomaly cluster")
-        print(anomaly_cluster)
-        print("dependency check for cluster = 3 -> alert")
+            logging.info(f"Anomaly cluster: {anomaly_cluster}")
+            is_anomaly_exist = True
 
-        return
+        return cluster_df, is_anomaly_exist
 
-    def process():
+    def interpret_cluster(self, tuned_model: LGBMClassifier) -> pd.DataFrame:
+        """Interpret Cluster Behavior by permutation feature importance using `enriched_customer_profile`"""
+        cluster_results = self.calculate_important_score(tuned_model= tuned_model)
+        mapped_cluster_factor = self.map_feature_importance(cluster_results=cluster_results)
+        cluster_df = self.build_explode_cluster_df(mapped_cluster_factor=mapped_cluster_factor)
+        cluster_df, is_anomaly_exist = self.identify_anomaly_cluster(cluster_df=cluster_df, mapped_cluster_factor=mapped_cluster_factor)
+        return cluster_df, is_anomaly_exist
+    
+    # for triggering model retraining
+    def check_retrain_required():
         pass
+
+    def process(self) -> tuple:
+        X_train, X_test, y_train, y_test = self.split_data(df=self.df, test_size=0.2)
+        self.train_interpreter(X_train=X_train, y_train=y_train)
+        best_estimator, best_params, eval_scores = self.eval_trained_interpreter(X_test=X_test, y_test=y_test)
+        cluster_df, is_anomaly_exist = self.interpret_cluster(tuned_model=best_estimator)
+        return cluster_df, best_estimator, best_params, eval_scores, is_anomaly_exist
 
 
 class MlProcessor(AbstractMLProcessor):
-    def __init__(self):
+    def __init__(
+            self,
+            df: pd.DataFrame,
+            profiler: CustomerProfilingService, 
+            segmenter: CustomerSegmentationService, 
+            interpreter: ClusterInterpretationService
+        ):
         super().__init__()
+        self.profiler = profiler
+        self.segmenter = segmenter
+        self.interpreter = interpreter
 
     def export_output(
             self,
@@ -461,24 +496,10 @@ class MlProcessor(AbstractMLProcessor):
             interpreter: LGBMClassifier | Any,
             interpreter_metrics: dict,
         ) -> None:
-        # data models
-        cluster_df.to_parquet("data/customer_cluster.parquet")
-        output_df.to_parquet("data/customer_profile_rfm.parquet")
-
-        # artifact
-        with open("data/interpreter_metrics.json", "w") as f:
-            json.dump(interpreter_metrics, f, indent=4)
-            f.close()
-
-        # ml models
-        with open("models/kmeans_cluster_classifier_v1.bin", "wb") as f_out:
-            pickle.dump(cluster_model, f_out)
-            f_out.close()
-
-        with open("models/lgbm_cluster_interpreter_v1.bin", "wb") as f_out:
-            pickle.dump(interpreter, f_out)
-            f_out.close()
-
-    def process():
-        """Wrapper Orchestrate all processes and ml services"""
         pass
+
+    def process(self):
+        """Wrapper Orchestrate all processes and ml services"""
+        enriched_customer_profile = self.profiler.process()
+        output_df, trained_kmeans, scaler = self.segmenter.process()
+        cluster_df, best_estimator, best_params, eval_scores, is_anomaly_exist = self.interpreter.process()
