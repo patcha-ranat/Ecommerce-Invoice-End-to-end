@@ -14,36 +14,43 @@ from sklearn.inspection import permutation_importance
 from abstract import AbstractMLService, AbstractMLProcessor
 
 
-class CustomerProfilingService(AbstractMLService):
+class BaseMLService(AbstractMLService):
+    def __init__(self):
+        super().__init__()
+        self.df: pd.DataFrame
+
+    @classmethod
+    def get_input(self, df: pd.DataFrame) -> None:
+        self.df = df.copy()
+        return self
+
+
+class CustomerProfilingService(BaseMLService):
     """RFM"""
     def __init__(self):
         super().__init__()
         self.df: pd.DataFrame
         self.unique_invoice: pd.DataFrame
         self.customer_profile: pd.DataFrame
-    
-    def get_input(self, df: pd.DataFrame) -> None:
-        self.df = df.copy()
-        return None
 
-    def drop_anonymous(self, sample_df: pd.DataFrame) -> pd.DataFrame:
+    def drop_anonymous(self, df: pd.DataFrame) -> pd.DataFrame:
         """Drop CustomerID = '0' from sample DataFrame"""
-        anonymous_customer_index = sample_df[sample_df['CustomerID'] == 0].index
-        sample_df = sample_df.drop(index=anonymous_customer_index)
-        return sample_df
+        anonymous_customer_index = df[df['CustomerID'] == 0].index
+        df = df.drop(index=anonymous_customer_index)
+        return df
 
-    def distinct_customer_invoice(self, sample_df: pd.DataFrame | None) -> pd.DataFrame:
+    def distinct_customer_invoice(self, df: pd.DataFrame | None) -> pd.DataFrame:
         """Create/update class attribute of unique_invoice with unique customer-invoice DataFrame for re-usage"""
         if self.unique_invoice is not None:
             return self.unique_invoice.copy()
         else:
-            unique_invoice = sample_df[['CustomerID', 'InvoiceNo', 'InvoiceDate']].drop_duplicates(['InvoiceNo'])
+            unique_invoice = df[['CustomerID', 'InvoiceNo', 'InvoiceDate']].drop_duplicates(['InvoiceNo'])
             self.unique_invoice = unique_invoice
             return self.unique_invoice.copy()
 
-    def get_recency(self, sample_df: pd.DataFrame | None = None) -> pd.DataFrame:
+    def get_recency(self, df: pd.DataFrame | None = None) -> pd.DataFrame:
         """Create Recency DataFrame for RFM framework"""
-        unique_invoice = self.distinct_customer_invoice(sample_df=sample_df)
+        unique_invoice = self.distinct_customer_invoice(df=df)
         
         unique_invoice['recency'] = unique_invoice.groupby('CustomerID')['InvoiceDate'].diff().dt.days
         recency_df = unique_invoice.drop_duplicates("CustomerID", keep='last')
@@ -57,14 +64,14 @@ class CustomerProfilingService(AbstractMLService):
 
         return recency_df
 
-    def get_frequency(self, sample_df: pd.DataFrame) -> pd.DataFrame:
+    def get_frequency(self, df: pd.DataFrame) -> pd.DataFrame:
         """Create Frequency DataFrame for RFM framework"""
-        freq_df = sample_df.groupby(['CustomerID'])['InvoiceNo'].nunique().reset_index().rename({'InvoiceNo': 'frequency'}, axis=1)
+        freq_df = df.groupby(['CustomerID'])['InvoiceNo'].nunique().reset_index().rename({'InvoiceNo': 'frequency'}, axis=1)
         return freq_df
 
-    def get_monetary(self, sample_df: pd.DataFrame) -> pd.DataFrame:
+    def get_monetary(self, df: pd.DataFrame) -> pd.DataFrame:
         """Create Monetary DataFrame for RFM framework"""
-        monetary_df = sample_df.groupby('CustomerID')["total_spend"].sum().reset_index().rename({'total_spend': 'monetary'}, axis=1)
+        monetary_df = df.groupby('CustomerID')["total_spend"].sum().reset_index().rename({'total_spend': 'monetary'}, axis=1)
         return monetary_df
 
     def merge_rfm(self, rfm_dfs: list[pd.DataFrame]) -> pd.DataFrame:
@@ -76,7 +83,7 @@ class CustomerProfilingService(AbstractMLService):
     def feature_en_additional(
             self, 
             customer_profile: pd.DataFrame,
-            sample_df: pd.DataFrame
+            df: pd.DataFrame
         ) -> pd.DataFrame:
         """
         Execute Feature Engineering for a better customer behavior segmentation
@@ -112,7 +119,7 @@ class CustomerProfilingService(AbstractMLService):
         )
         
         # 3. mean ticket_size (AVG spent per transaction) + mean_qty + mean_unique_item
-        mean_per_purchase = sample_df.groupby(['CustomerID', 'InvoiceNo'])\
+        mean_per_purchase = df.groupby(['CustomerID', 'InvoiceNo'])\
                                     .agg({
                                         "total_spend": "sum", # aggregate some for each InvoiceNo and CustomerID
                                         "Quantity": "sum",
@@ -133,7 +140,7 @@ class CustomerProfilingService(AbstractMLService):
                                     .round(2)
         
         # 4. mean spent per month + freq per month
-        per_period = sample_df[['CustomerID', 'InvoiceNo', 'StockCode', 'InvoiceDate', 'total_spend']].copy()
+        per_period = df[['CustomerID', 'InvoiceNo', 'StockCode', 'InvoiceDate', 'total_spend']].copy()
         per_period['month'] = per_period['InvoiceDate'].dt.month
 
         per_month = per_period.groupby(['CustomerID', 'month'])\
@@ -152,26 +159,23 @@ class CustomerProfilingService(AbstractMLService):
 
     def process(self) -> pd.DataFrame:
         """Entrypoint for data preprocessing"""
-        df = self.drop_anonymous(sample_df=self.sample_df)
-        recency_df = self.get_recency(sample_df=df)
-        frequency_df = self.get_frequency(sample_df=df)
-        monetary_df = self.get_monetary(sample_df=df)
+        df = self.drop_anonymous(df=self.df)
+        recency_df = self.get_recency(df=df)
+        frequency_df = self.get_frequency(df=df)
+        monetary_df = self.get_monetary(df=df)
         customer_profile = self.merge_rfm(rfm_dfs=[recency_df, frequency_df, monetary_df])
         enriched_customer_profile = self.feature_en_additional(
             customer_profile=customer_profile,
-            sample_df=df
+            df=df
         )
         return enriched_customer_profile
 
 
-class CustomerSegmentationService(AbstractMLService):
+class CustomerSegmentationService(BaseMLService):
     """Kmeans"""
-    def __init__(
-        self,
-        df: pd.DataFrame
-    ):
+    def __init__(self):
         super().__init__()
-        self.df = df
+        self.df: pd.DataFrame
         self.scaler: RobustScaler
 
     def scale(self, df: pd.DataFrame) -> tuple[pd.DataFrame, RobustScaler]:
@@ -263,6 +267,7 @@ class CustomerSegmentationService(AbstractMLService):
     
     def process(self) -> tuple[pd.DataFrame, KMeans, RobustScaler]:
         """Entrypoint to orchestrate the processes"""
+        # TODO: output to dict instead of tuple
         scaled_df, scaler = self.scale(df=self.df)
         
         distortions = self.train(df=scaled_df)
@@ -277,11 +282,11 @@ class CustomerSegmentationService(AbstractMLService):
         return output_df, trained_kmeans, scaler
 
 
-class ClusterInterpretationService(AbstractMLService):
+class ClusterInterpretationService(BaseMLService):
     """LightGBM"""
-    def __init__(self, df: pd.DataFrame):
+    def __init__(self):
         super().__init__()
-        self.df = df
+        self.df = pd.DataFrame
         self.X: pd.DataFrame
         self.y: pd.Series
 
@@ -357,6 +362,7 @@ class ClusterInterpretationService(AbstractMLService):
             X_test: pd.DataFrame,
             y_test: pd.DataFrame
         ) -> tuple:
+        # TODO: output to dict instead of tuple
         # get search output
         best_params = trained_search.best_params_
         best_estimator = trained_search.best_estimator_
@@ -465,9 +471,11 @@ class ClusterInterpretationService(AbstractMLService):
     
     # for triggering model retraining
     def check_retrain_required():
+        # TODO: solve this logic
         pass
 
     def process(self) -> tuple:
+        # TODO: output to dict instead of tuple
         X_train, X_test, y_train, y_test = self.split_data(df=self.df, test_size=0.2)
         self.train_interpreter(X_train=X_train, y_train=y_train)
         best_estimator, best_params, eval_scores = self.eval_trained_interpreter(X_test=X_test, y_test=y_test)
@@ -484,22 +492,27 @@ class MlProcessor(AbstractMLProcessor):
             interpreter: ClusterInterpretationService
         ):
         super().__init__()
+        self.df = df.copy()
         self.profiler = profiler
         self.segmenter = segmenter
         self.interpreter = interpreter
 
-    def export_output(
-            self,
-            cluster_df: pd.DataFrame,
-            output_df: pd.DataFrame,
-            cluster_model: KMeans | Any,
-            interpreter: LGBMClassifier | Any,
-            interpreter_metrics: dict,
-        ) -> None:
-        pass
-
-    def process(self):
+    def process(self) -> dict:
         """Wrapper Orchestrate all processes and ml services"""
-        enriched_customer_profile = self.profiler.process()
-        output_df, trained_kmeans, scaler = self.segmenter.process()
-        cluster_df, best_estimator, best_params, eval_scores, is_anomaly_exist = self.interpreter.process()
+
+        enriched_customer_profile = self.profiler.get_input(df=self.df).process()
+        output_df, trained_kmeans, scaler = self.segmenter.get_input(df=enriched_customer_profile).process()
+        cluster_df, best_estimator, best_params, eval_scores, is_anomaly_exist = self.interpreter.get_input(df=output_df).process()
+
+        output = {
+            "df_cluster_rfm": output_df,
+            "df_cluster_importance": cluster_df,
+            "segmenter_trained": trained_kmeans,
+            "segmenter_scaler": scaler,
+            "interpreter": best_estimator,
+            "interpreter_params": best_params,
+            "interpreter_metrics": eval_scores,
+            "is_anomaly_exist": is_anomaly_exist
+        }
+
+        return output
