@@ -47,10 +47,11 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
     - 6.3 [*(Optional)* Automating the Deployment Process](#65-automating-the-deployment-process-optional)
 7. [Conclusion](#7-conclusion)
 
+*Disclaimer: The project is not fully finished, but covered all the parts available as links above.*
+
 ## **Project Overview**
 
 ![project-overview](./src/Picture/project-overview.png)
-*Note: this project will also include developing strategy and marketing campagin based on the data and some parts of the project are not fully finished yet*
 
 ## **Tools**:
 - Sources
@@ -78,7 +79,7 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
     - Jupyter Notebook
 - Model Deployment and Monitoring
     - FastAPI (Model Deployment)
-    - Streamlit (Monitoring)
+    - ~~Streamlit (Monitoring)~~
     - Artifact Registry
     - Cloud Run
     - Github Actions (CI/CD)
@@ -88,79 +89,74 @@ Dataset: [E-Commerce Data - Kaggle](https://www.kaggle.com/datasets/carrie1/ecom
 ## Prerequisites:
 - Get a credentials file from kaggle and activate the token for API.
 - Have Google Account being able to use google cloud services.
+- Docker Desktop
+- Python
 
-*The credentials are hidden in this project by `.gitignore`*
+*Although `.env` file is push to the repository, sensitive data and the credentials are hidden in by `.gitignore`*
 
 ## 1. Setting up Environment
 
 ![setting-overview](./src/Picture/setting-overview.png)
 
-Firstly, clone this repository to obtain all neccessary files, then use it as working directory.
+Firstly, clone this repository to obtain all neccessary files, then use it as root working directory.
 ```bash
 git clone https://github.com/Patcharanat/ecommerce-invoice
 ```
-We need to set up environment to demo ETL process, which including:
+We need to set up local environment with docker to perform ETL process, which basically including:
 - Postgres database
 - Airflow
 
-All of the tools need to be run in different environment to simulate the real use-case. Hence, Docker compose become important for demo.
+Since the pipelines might need to be run in different environment not just on your machine, it's essential to make sure that your code can be packaged and run in anywhere or orchestrated by different tools for further scaling up. Developing and testing your code to perform ETL/ELT processes in a **Docker** container is essential. **Docker Compose** make it possible to do it, orchestraing multiple containers (and maybe built by different images) with a lightweight approach simulating running on different environment. 
 
-***Note:** if you want to reproduce the project by yourself, just create a folder for your working directory. And, the process you need to do will be remarked with **`DIY`***.
+Usually, we don't use docker compose in production, but it is lightweight and easy enough to enable you to run and test your code on local machine. However, packing your code as a docker image is still the way to go for production scale pipeline, specifically for *Kubernetes* as an example.
 
 ### 1.1 Setting up Overall Services (containers)
-Open your docker desktop and execute bash command (in terminal) within your working directory (in clone file) by:
+
+Open your docker desktop and execute bash command in terminal with your root working directory (in a clone repo) by:
+
 ```bash
 docker compose build
 ```
-This command will build all containers we specified in `docker-compose.yml` file, especially in `build` and `context` parts which do follwing tasks:
-- Copying sql file (`setup.sql`) to `docker-entrypoint-initdb.d` to be executed when we initialize container.
-- Copying `cleaned_data.csv` file to the postgres container.
-- Creating schema and table with `cleaned_data.csv` by executing `setup.sql` file.
+
+This command will build all containers we specified in [docker-compose.yml](./docker-compose.yml) file, especially in `build` and `context` parts which do following tasks:
+- Copying [setup.sql](./setup.sql) script to `docker-entrypoint-initdb.d` path in a container to be executed when we initialize the session.
+- Copying [cleaned_data.csv](./data/cleaned_data.csv) file to the postgres container as an mock-up source database.
+- Creating schema and table with `cleaned_data.csv` by executing `setup.sql` within the container.
 - Replicating postgres container to simulate another database for data warehouse with empty table using `postgres-target.Dockerfile`, and `target.sql` file.
 - Installing `requirements.txt` for airflow's container to be able to use libraries we needed in DAGs.
 - Add a Kaggle credentials file: `kaggle.json` (in this case we use Kaggle API) to make API usable.
 
-**Note1**: you may fail to run `docker compose build` since, you may not have google cloud credentials as a json file in your local. You can skip to [Step 2.1: Setting up Data Lake, and Data Warehouse](#step-21-setting-data-lake-and-data-warehouse) in ***Service account*** part to get your own google crendentials json file and put it in your own created `credentials` folder in the current working directory and try running `docker compose build` again.
+**Note**
+- `docker compose build` is creating container(s), following specification within `Dockerfile` file type specified in `docker-compose.yml` of how it should be built, in your local machine, but it's still not spinning up.
 
-*Note2: Don't forget to get `Kaggle.json` credentials, and add to `credentials` folder also.*
+**Debugging Note**
+- you may fail to run the command because you may not have google cloud credentials as a json file in your local. You can skip to [Step 2.1: Setting up Data Lake, and Data Warehouse](#step-21-setting-data-lake-and-data-warehouse) in ***Service account*** part to get your own google crendentials json file and put it in `credentials` folder. After that you can try running `docker compose build` again.
+- Don't forget to get `Kaggle.json` credentials, and add to `credentials` folder also.
 
-**DIY**: Setting up Overall Services (containers)
-<details>
-<p>
+**Reproducing Note**
+- First, you need to simulate postgres database by creating a container with postgres image. you will need to copy `cleaned_data.csv` file into the postgres container. Then, you need to create a database and a schema, and a table with [`setup.sql`](setup.sql) file, and also configure [`.env`](.env) file, like username, password, and database. The file that will do the copying file task is [`postgres.Dockerfile`](postgres.Dockerfile)
+- We added another postgres container to simulate target database. The files that are relevant to this task are [`postgres-target.Dockerfile`](postgres-target.Dockerfile) to build image for the container and [`target.sql`](target.sql) to setup empty table. In this database, we will use different database name and different schema for testing how to handle with multiple databases.
+- Then, you need to create a container with airflow image. You will need to copy `kaggle.json` file into the container (webserver, and scheduler). Then, you need to install libraries we needed in DAGs by **"pip install"**[`requirements.txt`](requirements.txt) file within the containers. The file that will do the task is [`airflow.Dockerfile`](airflow.Dockerfile)
+- Then, you need to create a container with airflow image. You will need to copy `kaggle.json` file into the container (webserver, and scheduler). Then, you need to install python dependencies we needed in DAGs by `pip install -r`[`requirements.txt`](requirements.txt) file within the containers. The file that will do the task is [`airflow.Dockerfile`](airflow.Dockerfile)
+- To easily run multiple docker containers or running microservices, you will need docker compose. The file that will do the task is [`docker-compose.yml`](docker-compose.yml), which will `build` all the images for containers we specified in `build` and `context` parts resulting in running different `.Dockerfile` for different containers.
 
-First, you need to simulate postgres database by creating a container with postgres image. you will need to copy `cleaned_data.csv` file into the postgres container. Then, you need to create a database and a schema, and a table with [`setup.sql`](setup.sql) file, and also configure [`.env`](.env) file, like username, password, and database. The file that will do the copying file task is [`postgres.Dockerfile`](postgres.Dockerfile)
-
-**(Update)** we add more postgres container to simulate another database for data warehouse. The files that are relevant to this task are [`postgres-target.Dockerfile`](postgres-target.Dockerfile) to build image for the container and [`target.sql`](target.sql) to setup empty table. In this database, we will use different database name and different schema for testing how to handle with multiple databases.
-
-Then, you need to create a container with airflow image. You will need to copy `kaggle.json` file into the container (webserver, and scheduler). Then, you need to install libraries we needed in DAGs by **"pip install"**[`requirements.txt`](requirements.txt) file within the containers. The file that will do the task is [`airflow.Dockerfile`](airflow.Dockerfile)
-
-Then, you need to create a container with airflow image. You will need to copy `kaggle.json` file into the container (webserver, and scheduler). Then, you need to install libraries we needed in DAGs by **"pip install"**[`requirements.txt`](requirements.txt) file within the containers. The file that will do the task is [`airflow.Dockerfile`](airflow.Dockerfile)
-
-To easily run multiple docker containers or running microservices, you will need docker compose. The file that will do the task is [`docker-compose.yml`](docker-compose.yml), which will `build` all the images for containers we specified in `build` and `context` parts resulting in running different `.Dockerfile` for different containers.
-
-In airflow official site, you will find [`docker-compose.yml`](https://airflow.apache.org/docs/apache-airflow/stable/docker-compose.yaml) template to run airflow you can use it as reference and change it to fit your needs, like add postgres section, and remove unnecessary part that can causes running out of memory making you unable to run docker containers successfully.
+In airflow official site, you will find [`docker-compose.yml`](https://airflow.apache.org/docs/apache-airflow/stable/docker-compose.yaml) template to run airflow you can use it as reference and change it to fit your needs, like adding postgres section, and remove unnecessary part that can causes running out of memory making you unable to run docker containers successfully.
 
 If you're new to container, you will be confused a little with using path. please be careful with paths where you mount the files to.
-</p>
-</details>
 
 ### 1.2 Intializing all Containers
 Initialize docker container(s) and run process in background (Detach mode)
+
 ```bash
 docker compose up -d
 ```
 
-***Note:** some services need time to start, check container's logs from `docker desktop` to see if the services are ready to work with.*
-
-To check status of running containers:
-```bash
-docker ps
-```
+***Note:** some services need time to start, check container's logs from **docker desktop UI** or `docker ps` to see if the services are ready to work with.*
 
 <img src="./src/Picture/docker-ps.jpg">
 
 ### 1.3 Checking if all Dockerfiles correctly executed
-What to be checked are
+What's needed to be checked are
 - Is the data table in postgres database as a source created correctly?
     - data loaded from `cleaned_data.csv` and using the right schema?
 - Is all the credentials file imported?
@@ -170,11 +166,12 @@ What to be checked are
 - Is the data table in postgres database as a target created correctly?
     - empty table with the right schema?
 
-Get into command-line or bash of container we specified.
+Getting into terminal of the container we specified by:
 ```bash
 docker exec -it <container-name-or-id> bash
 ```
-Note: Get container's name or id from `docker-compose.yml` or from `docker ps` command.
+
+*Note: You can get container's name or id from `docker-compose.yml` or from `docker ps` command.*
 
 At this step, we can check if csv file we meant to execute in Dockerfile is executed successfully by:
 ```bash
@@ -234,7 +231,7 @@ Don't forget to remove all image and containers when you're done.
 docker compose down -v
 ```
 
-and remove all images via `docker desktop`, we will initiate `docker compose build` and `docker compose up -d` again, when we want to test ETL process (test our airflow DAGs).
+and remove all images via `docker desktop`, we will initiate `docker compose build` and `docker compose up -d` again, when we want to test developed ETL code (test our airflow DAGs).
 
 <img src="./src/Picture/docker-desktop.jpg">
 
@@ -244,11 +241,11 @@ To set up airflow, we need to define more 4 services that refer to [official's .
 
 <img src="./src/Picture/airflow-ui.jpg" width="75%">
 
-Understanding how every components in services work make much more easier to comprehend and debug issues that occur, such as `depends-on`, `environment`, `healthcheck`, `context`, `build`, and storing object in `&variable`.
+Understanding how every components in `docker-compose.yml` work make much more easier to comprehend and debug issues that occur, such as `depends-on`, `environment`, `healthcheck`, `context`, `build`, and storing object in `&variable`.
 
-***Note:*** In `docker-compose.yml` file, Identation is very important.
+***Note:*** In `yaml` file, identation is very important.
 
-**For this project**, we create 2 postgres containers, so we need to check carefully if airflow connected to its own backendDB or the right database.
+**For this project**, we create 3 postgres containers, so we need to check carefully if airflow connected to its own backendDB or the right database.
 
 <details><summary>Issue debugged: for being unable to connect to airflow backendDB</summary>
 <p>
@@ -269,37 +266,36 @@ AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflo
 </p>
 </details>
 
-***Note:*** In `.env` file, airflow core need *FERNET* key which can be obtained from fernet.py (random generated)
+***Note:*** In `.env` file, airflow core need *FERNET* key which can be obtained from fernet.py (randomly generated)
 
 ## 2. ETL process: Writing DAGs and Managing Cloud Services
 
-In my case (this project), I used a dataset from kaggle which was:
+In this project, I used a dataset from kaggle which was:
 - loaded to postgres database
 - uploaded to this repo github as csv format
 - and I wrote DAGs to use Kaggle API to obtain the dataset directly from the Kaggle website.
 
 <img src="./src/Picture/etl-overview.png">
 
-If you want to change data, you have to write your own DAGs what match your specific use-case.
+If you use different dataset, you might have to write your own DAGs what match your specific use cases.
 
 ### 2.1 Setting up Data Lake, and Data Warehouse
-As we will use GCP (Google Cloud Platform) as our Data Lake and Data Warehouse, we need to make our airflow script, which run in docker containers in local, being able to connect to GCP by using **google credentials** as known as `service account` or `IAM`. I recommend to manually get the credential from GCP console for the safety aspect.
+As we will use GCP (Google Cloud Platform) for  Data Lake and Data Warehouse, we need to make our airflow script, which run in docker containers locally, being able to connect to GCP by using **google credentials** as known as a `service account` got from `IAM` section.
 
 **Service Account**
 
-Do the following:
-
-1. Go to your GCP console **within your project** (I assume you have free credit), and go to navigation menu (3-bar icon at top left), then go to `IAM & Admin` > `Service Accounts` > `Create Service Account` > Create your Service Account 
-2. In Service accounts section, click 3 dots at your new created service account > `Manage keys` > `Add key` > `Create new key` > `JSON` > `Create` > `Download JSON` > `Close`, keep your credentials (this json file) in safe place.
-3. You need to specify the permission that you allow for that service account, like how much it can access to the resources. What you need to do is:
-- Going to `IAM` page in `IAM & Admin` section > Edit principal for your created service account > Add Roles
+Please follow this guideline:
+1. Go to your GCP project console with available access to manage cloud resources, and go to navigation menu (3-bar icon at top left), then go to `IAM & Admin` > `Service Accounts` > `Create Service Account` > Create your Service Account 
+2. In Service accounts section, click 3 dots at your newly created service account > `Manage keys` > `Add key` > `Create new key` > `JSON` > `Create` > `Download JSON` > `Close`, please keep your credentials (this json file) in safe place (must not be uploaded to anywhere public).
+3. You have to to specify the permission that you allow for that service account, like how much it can manage resources. What you need to do is:
+- Go to `IAM` page in `IAM & Admin` section > Edit principal for your created service account > Add Roles
 - Add the following roles:
     - BigQuery Admin
     - Storage Admin
     - Storage Object Admin
 - And then, save your changes.
 
-***Note**: if you want to add your project to github, make sure you are working in private repo, or add it to `.gitignore` file*
+***Caution**: if you want to add your project to github, make sure you are working in private repo, or add it to `.gitignore` file*
 
 Until now, you've finished getting service account credentials.
 
@@ -307,7 +303,7 @@ Until now, you've finished getting service account credentials.
 
 **Data Lake**
 
-The next step is creating your Google cloud storage bucket. Go to `Cloud Storage` > `Create` > `Name your bucket` (which *globally unique*)
+The next step is creating your Google cloud storage bucket. Go to `Cloud Storage` > `Create` > `Name your bucket` (which is *globally unique*)
 
 Then, choose the options that match you specific needs, the recommend are:
 - `Location type`: Region
@@ -322,12 +318,12 @@ Click `Create`, and now you have your own data lake bucket.
 
 **Data Warehouse**
 
-The last step is creating your Bigquery dataset and table. In Bigquery (Google Data warehouse) you could have many projects, each project might have many datasets, and each dataset might have many tables. Understanding of this hierarchy, we can easily know what we should create for a data table.
+The last step is creating your Bigquery dataset and table. In Bigquery (Google Data warehouse) you could have many projects, each project might have many datasets (most called *schema* for other OLAP databases), and each dataset might have many tables.
 
 Do the following to create your dataset and table:
-- Go to `Bigquery` > Click on 3-dot after your project name > `Create dataset` > `Name your dataset` (which *globally unique*) > `Create dataset`
+- Go to `Bigquery` > Click on 3-dot after your project name > `Create dataset` > `Name your dataset` (which is *unique* within the project) > `Create dataset`
 
-*(Recommend to choose location type that suit your region, and table expiration is up to you)*
+*(Recommend to choose location type that suit your region)*
 
 - Click on 3-dot after your created dataset > `Create table` > `Select your data source` (In this case, select empty table) > `name your table` > define schema > `Create table`
 

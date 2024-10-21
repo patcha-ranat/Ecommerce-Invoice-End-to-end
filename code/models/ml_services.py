@@ -1,4 +1,3 @@
-from typing import Any
 from datetime import datetime
 import logging
 
@@ -629,7 +628,6 @@ class ClusterInterpretationService(BaseMLService):
     def process(self) -> dict:
         X_train, X_test, y_train, y_test = self.split_data(df=self.df, test_size=0.2)
         self.train_interpreter(X_train=X_train, y_train=y_train)
-
         output_eval_trained_interpreter: dict = self.eval_trained_interpreter(
             X_test=X_test, y_test=y_test
         )
