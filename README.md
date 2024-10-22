@@ -335,14 +335,14 @@ As you can see it's quite inconvenient that we have to create all of these resou
 
 **Terraform**
 
-We can achieve creating the bucket and the warehouse by **"Terraform"**, which is a better way to create and manage cloud resources reducing error-prone when reproducing the process and proper for production stage. you can see the code in `terraform` folder, consists of [main.tf](terraform/main.tf) and [variables.tf](terraform/variables.tf). Terraform make it easier to create and delete or managing the resources in this demonstration with a few bash commands.
+We can achieve creating the bucket, the dataset or table by **"Terraform"**, which is a better way to manage cloud resources reducing error-prone when reproducing the process. It's also proper for production stage with some additional concepts, we will discuss more on that later. you can see the code in `terraform` folder, consists of [main.tf](terraform/main.tf) and [variables.tf](terraform/variables.tf). Terraform make it easier to create, track stage, and delete the resources. In this demonstration, we enable it with a few bash commands.
 
 The [`main.tf`](./terraform/main.tf) file, using some variables from [`variables.tf`](./terraform/variables.tf) file, will produce the following resources:
 - 1 data lake bucket
 - 1 Bigquery dataset
 - 1 Bigquery table
 
-To use terraform, you need to install Terraform in your local machine (+add to PATH), and have your google credentials (service account credentials) as a json file within `"credentials"` directory located in the same level of your root working directory. Then, you can run terraform commands in your terminal **in your terraform working directory**.
+To use terraform, you need to install Terraform in your local machine (+add to PATH), and have your google credentials (service account credentials) as a json file within `credentials` directory located in the same level of your root working directory. Then, you can run terraform commands in your terminal **in your terraform working directory**.
 
 ```bash
 terraform init
@@ -354,14 +354,75 @@ terraform apply
 terraform destroy
 ```
 
-- `terraform init` initialize Terraform (where `main.tf` located) in your local machine (mount your working directory to terraform folder first).
+- `terraform init` initialize Terraform (where `main.tf` located) in your local machine (don't forget to `cd` into terraform directory first).
 - `terraform plan` to see what resources will be created and syntax checking.
 - `terraform apply` to create the resources.
-- `terraform destroy` to delete the resources. 
+- `terraform destroy` to delete the resources.
 
-After all, you can see the result in your GCP console, in Google cloud storage, and Bigquery that it's already created bucket, dataset and an empty table.
+After all, you can see the result in your GCP console, in Google cloud storage, and Bigquery that it's already created bucket, dataset and an empty table together with newly created files in local filesystem such as `*.tfstate*`, and `.terraform*`. Please also add these files to `.gitignore` to avoid credential exposing.
 
 ***Note**: The written script made us easily create and **delete** the resources which proper for testing purpose not on production.*
+
+**Terraform for Production, and the best practices**
+- Personally, I think this is the most important to think of when using Terraform. Managing credential and secret is highly important for real use cases to avoid leaking any sensitive information to public no matter how much the project scale is. There's multiple ways to do this that are proper to different use cases.
+    1. Use a credential file
+        - In this project, I used credential file storing in local machine which is easy to manage by 1 developer. So, it's not appropriate in production.
+    2. Use Secret manager
+        - By doing this, you have to manually create the credential first, and store it in secret manager on cloud services. So, you can use it as a resource later in the code authorized by your cloud cli such as `gcloud`, `aws`, and `az`
+        - **This is mentioned as the most commonly used in production,** but there's some drawback to concern.
+    3. Use Environment variables
+        - This approaches is suit for a project that's not involved by many developers, because it have to manually setup `.env` files to store sensitive information. However, It's still also risk to be leaked if any developer forget to hide the file by `.gitignore` and push to version control tools.
+        ```shell
+        export TF_VAR_google_cred=<gcp_credential_content>
+        export TF_VAR_gcp_region=<cloud_region>
+        export TF_VAR_db_username=<username_value>
+        export TF_VAR_db_password=<password_value>
+        ```
+        ```shell
+        # variable.tf
+
+        variable "gcp_cred" {}
+        variable "gcp_region" {}
+
+        variable "db_username" {
+            type = string
+        }
+        variable "db_password" {
+            type = string
+        }
+        ```
+        ```shell
+        # main.tf
+        provider "google" {
+            credentials = var.gcp_cred
+            region      = var.gcp_region
+        }
+        ```
+        - using `terraform.tfvars` to parse sensitive information during runtime is not different from this method, but in just different behavior, because you have to hide in from version control anyway.
+    4. Encrypt files with KMS (Key Management Service)
+        - **This is mentioned as the most commonly used in production.**
+    5. Masking sensitive
+        - In multiple previous approaches, Terraform sometimes know whether it's sensitive information and automatically secure it shown as `(known after apply)`.
+        - But sometimes it don't, we should explicitly mask it "sensitive", and it will be shown as `(sensitive value)`
+        ```shell
+        variable "aws_access_key" {
+            sensitive = true
+        }
+            variable "aws_secret_key" {
+            sensitive = true
+        }
+        output "accesskey_value" {
+            value = var.aws_access_key
+            sensitive = true
+        }
+        output "secret_value" {
+            value = var.aws_secret_key
+            sensitive = true
+        }
+        ```
+- Storing tf state online securely considered as very important aspect if you decide to use some of pattern above, since Terraform can unintentionally expose your secrets in the state file.
+
+
 
 
 ### 2.2 Setting up DAG and Connections
@@ -370,17 +431,17 @@ After all, you can see the result in your GCP console, in Google cloud storage, 
 
 In this project, I wrote main script: [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl_dag.py) to create 1 DAG of **(8+1) tasks**, which are:
 1. Reading data from raw url from github that I uploaded myself. Then, upload it to GCP bucket as uncleaned data.
-2. Fetching (Unloading) data from the postgres database that we simulate in docker containers as a data warehouse source. Then, upload it to GCP bucket as cleaned data.
+2. Fetching (Unloading) data from the postgres database that we simulate in docker containers as a data source. Then, upload it to GCP bucket as cleaned data.
 3. Downloading from the Kaggle website using Kaggle API. Then, upload it to GCP bucket (GCS) as uncleaned data. 
 4. Data Transformation: reformat to parquet file, and cleaning data to be ready for data analyst and data scientist to use, then load to staging area.
-5. Loading to data warehouse (Bigquery) as cleaned data with a Native table way from staging area.
-6. Loading to data warehouse (Bigquery) as cleaned data with an External table way from staging area.
+5. Loading data located in staging area to data warehouse (Bigquery) as cleaned data with native table approach.
+6. Loading to data warehouse (Bigquery) as cleaned data with external table approach from staging area.
 7. Loading to another Postgres database as cleaned data.
-8. Clearing data in staging area (GCP bucket). **(this will not be used since we will implement an external table that requires the source file to be exists)**
+8. Clearing data in staging area (GCP bucket). **(this will not be used for external table approach that requires the source file to be exists)**
 
-Additionally, I also wrote [**transform_load.py**](./src/dags/transform_load.py) and [**alternative_cloud_etl.py**](./src/dags/alternative_cloud_etl.py) to demonstrate inheritance of DAGs and how to use different cloud services, respectively.
+Additionally, I also wrote [**transform_load.py**](./src/dags/transform_load.py) and [**alternative_cloud_etl.py**](./src/dags/alternative_cloud_etl.py) to demonstrate utilizing modularization or "utils" and how to use different cloud services, respectively.
 
-After we wrote the DAG script, we're gonna test our DAG by initating docker compose again, and go to `localhost:8080` in web browser, get ready to trigger DAG and see if our DAG worked successfully.
+After we wrote the DAG script, we're gonna test our DAG by initating docker compose again, and go to `localhost:8080` in web browser, trigger DAG and see if our DAG worked successfully.
 
 But before triggering the DAG, we need to set up the connection between Airflow and our applications in Airflow web UI:
 
@@ -412,29 +473,26 @@ And then, `Save` again.
 
 **Note:** you have to change the code in [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl_dag.py) to match your connection id that you created in Airflow UI, and your project id also.
 
-For details of airflow connection configuring, we only create connections of Postgres and Bigquery for fetching data from containerized Postgres database, and creating **external table** for Bigquery respectively because it's required, unless airflow could not connect to the applications and cause the bug. Most of time, you can tell if it requires connection in Airflow UI by existing of `conn_id` arguments in the Operators. But, the other connection, Google Cloud Storage, is not required to be created in Airflow UI, because we use the credentials file that mounted into Airflow container to authenticate the connection in the code.
+For futher details, we only create connections of Postgres and Bigquery for fetching data from containerized Postgres database, and creating **external table** for Bigquery respectively because it's required, unless airflow could not connect to the applications and cause the bug. Most of time, you can tell if it requires connection in Airflow UI by existing of `conn_id` arguments in the Operators. But, the other connection,  like Google Cloud Storage, is not required to be created in Airflow UI, because we use the credentials file that mounted into Airflow container to authenticate the connection in the code.
 
 <img src="./src/Picture/airflow-connections.jpg" width="75%">
 
-<details><summary>The issues I encountered during developed DAG</summary>
+<details><summary>Reproducing Note for DAGs development</summary>
 <p>
 
-- It was kinda lost when trying to write my own DAGs with my own concepts, like how to get, read, fetch, write the file, or how to connect and upload to the cloud. Reading directly from official documentation was a big help, such as Google Cloud Documentation, and Kaggle API Documentation.
+- Reading direct from official documentation is a good way to develop your code and enable other team members easier to maintain, such as Google Cloud Documentation, and Kaggle API Documentation.
 - Reading Logs after triggering DAG in airflow web UI was very helpful to debug the issues.
-- When we have google credentials as a json file, it make us less concerned about how to authenticate, like gcloud, gsutil etc. (or even connection in Airflow). We just need to mount the credentials into the airflow container, put the path of the json file in the code and use the right API or library provided by provider which mostly can be found as templates in official documentation.
-- The libraries are able to be used in the DAG script or not, depending on `requirements.txt` file. If you want to use a library, you have to install it in `requirements.txt` file, and rebuild the image *(docker compose down -v, docker compose build, docker compose up -d)* again.
-    - At first, I encountered that `pandas` version and `pyarrow` are not compatible with python version of default latest airflow image, so I decide not to use pandas and pyarrow to transform data to parquet file, but use `csv` instead. But, after a while, I found out that I can pull an image with own desired python version, so I can use pandas to transform data, and change into parquet file format using this line: 
-        ```dockerfile
-        FROM apache/airflow:slim-2.6.2-python3.10
-        ```
-    in [airflow.Dockerfile](airflow.Dockerfile)
-- I used `gcsfs` or `GCSFileSystem` in DAG script to run transformation task, because in case of transforming the data from data lake using pandas, it's required the library, which currently in beta, instead of using `goole.cloud.storage`.
-    - And you have to install it in `requirements.txt` file, and also use the authentication via `GCSFileSystem` in the code instead of `google.cloud.storage.Client`.
-- In the DAG code, I used **overwriting** option for Native table in Bigquery. The append method is not covered in the project scope, but in production, append method is more preferred to preserve the old data.
-    - External table always refer to the source file, so it's not possible to be appended, but manually append the data by itself with the code.
+- When we have google credentials as a json file, it make us less concerned about how to authenticate, like gcloud, gsutil etc. (or even connection in Airflow). We just have to mount the credentials into the airflow container, put the path of the json file in the code and use the right API or library provided by provider which mostly can be found as templates in official documentation.
+    - Although, this is not the best practice to manage your secret as mentioned in Terraform part.
+- In order to handle python dependencies such as additional libraries to be available during runtime that are not belong to python default module, we have to add the additional lib to `requirements.txt` file, and install with `pip install -r` in custom airflow image, usally called baked image. And then, rebuild the image (`docker compose down -v`, `docker compose build`, `docker compose up -d`) again.
+- Make sure we don't have any dependencies conflict and compatible with python version which can change in [airflow.Dockerfile](airflow.Dockerfile) by: 
+```dockerfile
+FROM apache/airflow:slim-2.6.2-python3.10
+```
+- I used `gcsfs` or `GCSFileSystem` in DAG script to run transformation task. the library allow us to manage and handle the data in GCS.
+    - we also have to authenticate via `GCSFileSystem` instance in the code instead of `google.cloud.storage.Client`.
 - When I first load the parquet file to pre-defined schema in Bigquery, I encountered the error that the schema is not matched. I found out that the schema of parquet file is not the same as the schema in Bigquery with extra column "index level 0". So, the solution is to drop the column before saving to parquet file in Google Cloud Storage by using `df.to_parquet(..., index=False)`, just like `to_csv('filename.csv', index=False)`.
-
-    *(Even you download the `index=True` parquet file to check in pandas, it will not show the extra index column)*
+    - *(Even you download the `index=True` parquet file to check in pandas, it will not show the extra index column)*
 - *(Update)* Meanwhile I was developing other part of the project, a new airflow version(2.7) was launched, and the new version of airflow image is not compatible with the old version by airflow backendDB which caused a serious bug making `airflow-init` initialized unsuccessfully, `airflow-scheduler`, and `airflow-webserver` not work as expected.
     - the solution is to remove all containers, images, and existing volumes of airflow backendDB, and then intialize again with the fix image version.
         - remove local volumes by
@@ -449,17 +507,16 @@ For details of airflow connection configuring, we only create connections of Pos
 </p>
 </details>
 
-*The dependencies management will be changed to **poetry** in further development. Since, it's not worked until now and not the focus of this project*
-
 **Bigquery: Native tables vs External tables**
 
 <img src="./src/Picture/native-vs-external.png" width="75%">
 
 In the DAG script, we have 2 tasks to load data to Bigquery, one is using Native table, and another is using External table. the differences between them are their performance and how it works.
 
-External tables are suitable when you want to query data without loading it into BigQuery, optimizing costs and leveraging existing data sources. Native tables, on the other hand, offer enhanced performance and advanced features within BigQuery, like partitioning and clustering.
+External tables are suitable when you want to query data without loading it into BigQuery, optimizing storage costs and leveraging existing data sources. Native tables, on the other hand, offer enhanced performance and advanced features within BigQuery, like partitioning and clustering and more user-friendly.
 
-*What to note is: if you're using external table, you can't delete the source in data lake, because it require the source to query directly from. And you couldn't see the preview of data table in the Bigquery UI, with Extenal table approach.*
+**Airflow DAGs and Data warehouse in Production**
+- *In progress*
 
 ### 2.3 Triggering DAG and Monitoring
 
