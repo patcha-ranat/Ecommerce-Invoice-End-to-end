@@ -12,23 +12,23 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
 ## **Table of Contents**:
 1. [Setting up Environment](#1-setting-up-environment)
     - 1.1 [Setting up Overall Services (containers)](#11-setting-up-overall-services-containers)
-    - 1.2 [Intializing all Containers](#12-intializing-all-containers)
-    - 1.3 [Checking if all Dockerfiles correctly executed](#13-checking-if-all-dockerfiles-correctly-executed)
-    - 1.4 [Checking Data in a Database](#14-checking-data-in-a-database)
-    - 1.5 [Exiting](#15-exiting)
-    - 1.6 [Setting up Airflow Web UI](#16-setting-up-airflow-web-ui)
 2. [ETL (Extract, Transform, Load): Writing DAGs and Managing Cloud Services](#2-etl-process-writing-dags-and-managing-cloud-services)
     - 2.1 [Setting up Data Lake, and Data Warehouse](#21-setting-up-data-lake-and-data-warehouse)
+        - [**Terraform**](#terraform)
     - 2.2 [Setting up DAG and Connections](#22-setting-up-dag-and-connections)
     - 2.3 [Triggering DAG and Monitoring](#23-triggering-dag-and-monitoring)
-    - [**Step to Reproduce Virtualization for Testing**](#step-to-reproduce-virtualization-for-testing)
-    - 2.4 [Extend to AWS](#24-extend-to-aws)
+    - [Step to Reproduce Virtualization for Testing](#step-to-reproduce-virtualization-for-testing)
+    - 2.4 [Extending to AWS](#24-extend-to-aws)
+        - [Terraform for AWS](#terraform-for-aws)
     - 2.5 [Detail of the ETL Code](#25-detail-of-the-etl-code)
+    - 2.6 [**Airflow DAGs and Data warehouse in Production**](#26-airflow-dags-and-data-warehouse-in-production)
+    - 2.7 [Terraform for Production, and the Best Practices](#27-terraform-for-production-and-the-best-practices)
 <!-- 3. [Web Scraping](#3-web-scraping) -->
 3. Web Scraping
 4. [EDA and Data Visualization](#4-eda-and-data-visualization)
     - 4.1 [EDA](#41-eda)
     - 4.2 [PowerBI Dashboard](#42-powerbi-dashboard)
+    - 4.3 [**Data Modeling and Dashboard Development in Production**](#43-data-modeling-and-dashboard-development-in-production)
 5. [Machine Learning Model Development](#5-machine-learning-model-development)
     - 5.1 [Customer Segmentation By RFM, KMeans, and Tree-based Model](#51-customer-segmentation-by-rfm-kmeans-and-tree)
     - 5.2 [Market Basket Analysis](#52-market-basket-analysis)
@@ -333,7 +333,7 @@ Until now, you've finished creating your data warehouse that's ready to load our
 
 As you can see it's quite inconvenient that we have to create all of these resources manually via Google UI. So, we will use **Terraform** to create these resources in the next step.
 
-**Terraform**
+#### **Terraform**
 
 We can achieve creating the bucket, the dataset or table by **"Terraform"**, which is a better way to manage cloud resources reducing error-prone when reproducing the process. It's also proper for production stage with some additional concepts, we will discuss more on that later. you can see the code in `terraform` folder, consists of [main.tf](terraform/main.tf) and [variables.tf](terraform/variables.tf). Terraform make it easier to create, track stage, and delete the resources. In this demonstration, we enable it with a few bash commands.
 
@@ -362,68 +362,6 @@ terraform destroy
 After all, you can see the result in your GCP console, in Google cloud storage, and Bigquery that it's already created bucket, dataset and an empty table together with newly created files in local filesystem such as `*.tfstate*`, and `.terraform*`. Please also add these files to `.gitignore` to avoid credential exposing.
 
 ***Note**: The written script made us easily create and **delete** the resources which proper for testing purpose not on production.*
-
-**Terraform for Production, and the best practices**
-- Personally, I think this is the most important to think of when using Terraform. Managing credential and secret is highly important for real use cases to avoid leaking any sensitive information to public no matter how much the project scale is. There's multiple ways to do this that are proper to different use cases.
-    1. Use a credential file
-        - In this project, I used credential file storing in local machine which is easy to manage by 1 developer. So, it's not appropriate in production.
-    2. Use Secret manager
-        - By doing this, you have to manually create the credential first, and store it in secret manager on cloud services. So, you can use it as a resource later in the code authorized by your cloud cli such as `gcloud`, `aws`, and `az`
-        - **This is mentioned as the most commonly used in production,** but there's some drawback to concern.
-    3. Use Environment variables
-        - This approaches is suit for a project that's not involved by many developers, because it have to manually setup `.env` files to store sensitive information. However, It's still also risk to be leaked if any developer forget to hide the file by `.gitignore` and push to version control tools.
-        ```shell
-        export TF_VAR_google_cred=<gcp_credential_content>
-        export TF_VAR_gcp_region=<cloud_region>
-        export TF_VAR_db_username=<username_value>
-        export TF_VAR_db_password=<password_value>
-        ```
-        ```shell
-        # variable.tf
-
-        variable "gcp_cred" {}
-        variable "gcp_region" {}
-
-        variable "db_username" {
-            type = string
-        }
-        variable "db_password" {
-            type = string
-        }
-        ```
-        ```shell
-        # main.tf
-        provider "google" {
-            credentials = var.gcp_cred
-            region      = var.gcp_region
-        }
-        ```
-        - using `terraform.tfvars` to parse sensitive information during runtime is not different from this method, but in just different behavior, because you have to hide in from version control anyway.
-    4. Encrypt files with KMS (Key Management Service)
-        - **This is mentioned as the most commonly used in production.**
-    5. Masking sensitive
-        - In multiple previous approaches, Terraform sometimes know whether it's sensitive information and automatically secure it shown as `(known after apply)`.
-        - But sometimes it don't, we should explicitly mask it "sensitive", and it will be shown as `(sensitive value)`
-        ```shell
-        variable "aws_access_key" {
-            sensitive = true
-        }
-            variable "aws_secret_key" {
-            sensitive = true
-        }
-        output "accesskey_value" {
-            value = var.aws_access_key
-            sensitive = true
-        }
-        output "secret_value" {
-            value = var.aws_secret_key
-            sensitive = true
-        }
-        ```
-- Storing tf state online securely considered as very important aspect if you decide to use some of pattern above, since Terraform can unintentionally expose your secrets in the state file.
-
-
-
 
 ### 2.2 Setting up DAG and Connections
 
@@ -515,9 +453,6 @@ In the DAG script, we have 2 tasks to load data to Bigquery, one is using Native
 
 External tables are suitable when you want to query data without loading it into BigQuery, optimizing storage costs and leveraging existing data sources. Native tables, on the other hand, offer enhanced performance and advanced features within BigQuery, like partitioning and clustering and more user-friendly.
 
-**Airflow DAGs and Data warehouse in Production**
-- *In progress*
-
 ### 2.3 Triggering DAG and Monitoring
 
 After finishing the writing DAG part, we can go to `localhost:8080` via web browser and login with username, and password we defined in [docker-compose.yml](docker-compose.yml) file. Then, we can see the DAGs we created in the UI. We can trigger the DAG by clicking on the `Trigger DAG` button, and monitor the progress of the DAG by clicking on the DAG name.
@@ -526,7 +461,7 @@ You can also see the logs of each task by clicking on the task name in the DAG g
 
 <img src="./src/Picture/airflow-triggered.jpg">
 
-Most of time, you don't write the DAGs in one time and test once it's done, you have come to this UI, triggering and monitoring to see if it works or not, and then fix the bugs. So, you have to trigger the DAGs many times, and see the logs to debug the code. It's very helpful to debug the code by reading the logs and checking which tasks are failed.
+Most of time, you don't write the DAGs in one time and test only once when it's done, you have to come to this UI, triggering and monitoring to see if it works or not, and then fix the bugs. It's very helpful to debug the code by reading the logs and checking which tasks are failed.
 
 **Once the ETL DAG worked successfully, the data engineering part is finished.**
 
@@ -557,12 +492,12 @@ Most of time, you don't write the DAGs in one time and test once it's done, you 
     terraform destroy
     ```
 
-### 2.4 Extend to AWS
+### 2.4 Extending to AWS
 In the previous part, I used GCP as a cloud service provider for data lake and data warehouse, but we can also use AWS (or Azure) as a cloud service provider. The process is quite similar to GCP, but it will have some differences in the code and architecture which we can adapt to it easily if we understand the concept of ETL.
 
 We will use AWS **S3** as a data lake, and AWS **Redshift** as a data warehouse. As before, we need to create IAM user (which equal to service account in GCP) and get the credentials file as `.csv` extension, then use it to create S3 bucket and Redshift by **terraform**.
 
-We will create an IAM user, and get the credentials file manually regarding the security aspect. Access for AWS is quite more complex than GCP, composed of IAM user, IAM Role, and Policy which will not be described in detail in this project.
+We will create an IAM user, and get the credentials file manually via Web IU. Access for AWS is quite more complex than GCP, composed of IAM user, IAM Role, and Policy which will not be described in detail in this project.
 
 **IAM User and Policies**
 
@@ -594,11 +529,11 @@ To get the IAM user, we must have root user which is the first user we created w
 
 After getting the credentials file, mount it to your `credentials` folder. Now, we can use it in **terraform** to create S3 bucket and Redshift resources.
 
-**Terraform for AWS**
+#### Terraform for AWS
 
-In this part is quite complex due to **"static credentials"** aspect, since we don't need to hard-coded or type in the key derectly to the terraform file. So in general, we will use **"terraform.tfvars"** to pass the hard-coded credentials to terraform file and add `terraform.tfvars` to `.gitignore`.
+In this part is quite complex due to **"static credentials"** behavior, since we don't need to hard-coded or type in the key derectly to the terraform file. So in general, we will use **"terraform.tfvars"** to pass the hard-coded credentials to terraform file and add `terraform.tfvars` to `.gitignore`.
 
-The concept is simple: we create resources in `main.tf` where some part of it use `var.` to refer to the variable in `variables.tf` file. In `variables.tf` file, we specify the variable name, type, and default value, if the default value is not specified, we have to pass the value interactively after `terraform apply` as inputs **OR** pass it automatically by creating `terraform.tfvars` file and type in the variable name and value. This is where we will copy credentials from csv to put it in **(and again don't forget to add both files to `.gitignore`)**.
+The concept is simple: we create resources in `main.tf` where some part of it use `var.` to refer to the variable specified in `variables.tf` file. In `variables.tf` file, we specify the variable name, type, and default value, if the default value is not specified, we have to pass the value interactively after `terraform apply` as inputs **OR** pass it automatically by creating `terraform.tfvars` file and type in the variable name and value. This is where we will copy credentials from csv to put it in **(and again please don't forget to add both files to `.gitignore`)**.
 
 All you need to do is creating `terraform.tfvars` (must be this name) in your `terraform` folder, and type in the following:
 ```hcl
@@ -622,12 +557,12 @@ Then you good to go with `terraform apply`.
 
 In Addition, configuring Redshift Serverless is quite complex, so I will not go into detail, but you can check the code in [main.tf](./terraform/main.tf). Basically we need to create the following:
 - Data "aws_availability_zones" to get the availability zone.
-- VPC.
+- VPC
 - Redshift subnet, and also config your available IP address in `terraform.tfvars`.
-- IAM role for Redshift Serverless.
-- Grant some access and attach some policy for the role.
+- IAM role for Redshift Serverless
+- Grant some access and attach some policy for the role
 - Workgroup
-- Namespace.
+- Namespace
 
 Unlike S3, which is much more easier to create, we just need to specify the name of the bucket, and the region.
 
@@ -646,6 +581,80 @@ I intentionally separate the code for AWS and GCP, so we can easily find between
 
 *Note: Loading to Redshift part will be described more in the future*
 
+### 2.6 Airflow DAGs and Data warehouse in Production
+- **Airflow**
+    - In the best practice, we wrap ETL processes into Airflow Opeators separately, can be either importing from official sites or sometimes customizing it to meet team's agreement or according to team's data governance.
+    - Separating processes by multiple operators and written as the *OOP* pattern can represent DAGs, airflow jobs, or workflows in comprehensive way and make a task to be atomic and isolated from each other.
+    - Most of time, official providers have their own developed operators associating with their products such as `GCSOperator`, `BigQueryOperator`, etc. that prevent us from error-proning developing it ourselves.
+- **Data Warehouse**
+    - This aspect can be vary across companies depended on data architecture design and data stack. However, there's quite a new term for modern data engineering called ***ELT*** pattern, which introduces a huge different from ETL. Basically, ELT allow us to adopt *[medallion architecture](https://www.databricks.com/glossary/medallion-architecture)*, separating processes into multiple data stages, keeping raw extracted data for later data reconciliation, and enabling fault-tolerant architecture by convenient backfilling due to schema changes and unexpected failure.
+    ![elt_example](./docs/elt_example.png)
+    - External table makes ELT process easier to be implemented reducing the gap between data lake and data warehouse, but still can be benefited from partitioning by ***Hive-style Partitioning*** 
+    - Actually, Parquet files embed data schema into the files. We can use some operators that support referring parquet internal schema to create external tables in data warehouse. So, we don't have to pre-define schema for every tables, except within an stardardized data processing framework.
+    - Transformer from *Bronze* layer to *Silver* layer can be a custom framework that stardardizes data format and follows company's data governance. There's multiple relevant libraries can be mentioned here, such as ***pyspark***, ***dlt***, and etc. depended on data sources, acceptable cost, and team expertise in tools.
+    - There're also multiple tools that support transforming data from *Silver* layer to *Gold* layer such as ***dbt***, ***SQL Mesh***, and etc. or even native airflow operator. Such tools give ability to visualize transformation logic and enable data lineage, native integrated data dict for a better maintainance.
+        - Many companies discourage the use of these tools giving the reason that it's not appropriate for big scale projects and too messy to maintain. However, I disagree this because there're practices and principles that solve this problem, like ***Data Mesh*** *(twisted from Domain-driven design: DDD)* and ***Modularity***. 
+        - Anyway, it requires highly skilled data archietct and data engineer to develop and maintain these tools along with the priciples. So, they might not be able to focus this enough since it can be quite a low-level foundation and very far from a product that's seemed to be more profitable to the company.
+
+### 2.7 Terraform for Production, and the Best Practices
+- Personally, I think this is the most important to think of when using Terraform. Credential and secret management is highly important for real use cases to avoid leaking any sensitive information to public no matter how much the project scale is. There's multiple ways to do this that are proper to different use cases.
+    1. Use a credential file
+        - In this project, I used credential file storing in local machine which is easy to manage by a developer. So, it's not appropriate in production.
+    2. Use Secret manager
+        - By doing this, you have to manually create the credential first, and store it in secret manager on cloud services. So, you can use it as a resource later in the code authorized by your cloud cli such as `gcloud`, `aws`, and `az`
+        - **This is mentioned as the most commonly used in production,** but there's some drawback to concern.
+    3. Use Environment variables
+        - This approaches is suit for a project that's not involved by many developers, because it have to manually setup `.env` files to store sensitive information. However, It's still also risk to be leaked if any developer forget to hide the file by `.gitignore` and push to version control tools.
+        ```shell
+        export TF_VAR_google_cred=<gcp_credential_content>
+        export TF_VAR_gcp_region=<cloud_region>
+        export TF_VAR_db_username=<username_value>
+        export TF_VAR_db_password=<password_value>
+        ```
+        ```shell
+        # variable.tf
+
+        variable "gcp_cred" {}
+        variable "gcp_region" {}
+
+        variable "db_username" {
+            type = string
+        }
+        variable "db_password" {
+            type = string
+        }
+        ```
+        ```shell
+        # main.tf
+        provider "google" {
+            credentials = var.gcp_cred
+            region      = var.gcp_region
+        }
+        ```
+        - using `terraform.tfvars` to parse sensitive information during runtime is not different from this method, but in just different behavior, because you have to hide in from version control anyway.
+    4. Encrypt files with KMS (Key Management Service)
+        - **This is mentioned as the most commonly used in production.**
+    5. Masking sensitive
+        - In multiple previous approaches, Terraform sometimes know whether it's sensitive information and automatically secure it shown as `(known after apply)`.
+        - But sometimes it don't, we should explicitly mask it "sensitive", and it will be shown as `(sensitive value)`
+        ```shell
+        variable "aws_access_key" {
+            sensitive = true
+        }
+            variable "aws_secret_key" {
+            sensitive = true
+        }
+        output "accesskey_value" {
+            value = var.aws_access_key
+            sensitive = true
+        }
+        output "secret_value" {
+            value = var.aws_secret_key
+            sensitive = true
+        }
+        ```
+- Storing tf state online securely considered as very important aspect if you decide to use some of pattern above, since Terraform can unintentionally expose your secrets in the state file.
+
 ## 3. Web Scraping
 
 This part is not currently in development. I will update the progress later. But, you can check the concept and the old written code in [web-scraping](https://github.com/Patcharanat/ecommerce-invoice/tree/master/web-scraping) folder.
@@ -656,7 +665,7 @@ Once we have the data in the data warehouse, we can do the EDA and data visualiz
 
 ### 4.1 EDA
 
-Actually, we have to do the **EDA** (Exploratory Data Analysis) before loading data to data warehouse for cleaning and transformation, but in the analysis part, we can do in different objectives. In this part, I will do an EDA to see the characteristic of the data, and see if there is any insight that can be used to improve the business.
+Actually, we might have to do the **EDA** (Exploratory Data Analysis) before loading data to data warehouse to see how we would clean the dataset, but in the analysis part, we can do in different objectives. In this part, I will do an EDA to see the characteristic of the data, and see if there is any insight that can be meaningful to the business.
 
 <details><summary>Data Characteristics</summary>
 <p>
@@ -725,9 +734,10 @@ What worth to mention are:
 A little note for future myself:
 - **Dashboard is about Storytelling**, so it's better to have a story in mind before creating the dashboard. It's not just about the data, but how to arrange the story from the data.
 - **It's crucial to know who are the audiences of the dashboard, and what the objective of the dashboard is**. So, we can select the right metrics, right data, and right visualization.
-- **Data model is very important**, it's the foundation of the dashboard. If the data model is incorrected, the dashboard will be incorrected also. If the data model come in a good shape, the dashboard will be easier to create, and the data will be easier to analyze. (especially in aspect of **Time Intelligence**)
+- **Data model is very important**, it's the foundation of the dashboard. If the data model is incorrected, the dashboard will be wrong also. If the data model come in a good shape, the dashboard will be easier to create, and the data will be easier to analyze. (especially in aspect of **Time Intelligence**)
 
-*Note: I will update the dashboard in the future, since it's not fully finished.*
+### 4.3 Data Modeling and Dashboard Development in Production
+- This topic is quite important data engineering processes.
 
 ## 5. Machine Learning Model Development
 
