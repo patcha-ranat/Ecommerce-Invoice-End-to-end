@@ -1,4 +1,4 @@
-# End-to-end E-commerce Data Project - Machine Learning-Driven Dynamic Personalized Marketing Management
+# End-to-end E-commerce Data Project - AI-Driven Interpretable Dynamic Customer Segmentation
 *Patcharanat P.*
 ```text
 Click "⋮≡" at top right to show the table of contents.
@@ -30,7 +30,7 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
     - 4.2 [PowerBI Dashboard](#42-powerbi-dashboard)
     - 4.3 [**Data Modeling and Dashboard Development in Production**](#43-data-modeling-and-dashboard-development-in-production)
 5. [Machine Learning Model Development](#5-machine-learning-model-development)
-    - 5.1 [Customer Segmentation By RFM, KMeans, and Tree-based Model](#51-customer-segmentation-by-rfm-kmeans-and-tree)
+    - 5.1 [Customer Segmentation By RFM, KMeans, and Tree-based Model](#51-customer-segmentation-by-rfm-kmeans-and-tree-based-model)
     - 5.2 [Market Basket Analysis](#52-market-basket-analysis)
     - 5.3 [Demand Forecasting](#53-demand-forecasting)
     - 5.4 Recommendation System
@@ -737,17 +737,17 @@ A little note for future myself:
 - **Data model is very important**, it's the foundation of the dashboard. If the data model is incorrected, the dashboard will be wrong also. If the data model come in a good shape, the dashboard will be easier to create, and the data will be easier to analyze. (especially in aspect of **Time Intelligence**)
 
 ### 4.3 Data Modeling and Dashboard Development in Production
-- This topic is quite important data engineering processes.
+- This topic is quite important and partially involved in data engineering processes.
 
 ## 5. Machine Learning Model Development
 
 The Model Development part is not fully finished yet, but some part of it are done and ready to be presented.
 
 This is what I have planned so far:
-1. [Customer Segmentation By RFM, KMeans, and Tree](#52-customer-segmentation-by-rfm-kmeans-and-tree) ***(Done)***
-2. [Market Basket Analysis](#53-market-basket-analysis) ***(Done)***
-3. Recommendation System *(Not started)*
-4. [Demand Forecasting](#54-demand-forecasting) ***(In progress)***
+1. [Customer Segmentation By RFM, KMeans, and Tree-based Model](#51-customer-segmentation-by-rfm-kmeans-and-tree-based-model) ***(Done)***
+2. [Market Basket Analysis](#52-market-basket-analysis) ***(Done)***
+3. [Demand Forecasting](#53-demand-forecasting) ***(Paused)***
+4. Recommendation System *(Not started)*
 5. Customer Churn Prediction *(Not started)*
 6. Price Analysis and Optimization *(Not started)*
 
@@ -920,8 +920,6 @@ LightGBM | 4884.230 | 32.29%
 Even we can see that the prediction result can a bit capture the trend of the data, but the result is not good enough compared with **mean** of the target.
 
 I intended to **decompose** the data into trend, seasonality, and residual, then use them as features to predict the future sales to make it stationary **and also add moving average types** such as EMA (Exponential Moving Average) and LWMA (Linear Weighted Moving Average) to the model, to weight the recent data more than the old data. Moreover, I want to test traditional statistical model such as ARIMA, and SARIMA. But, I think it's enough for now, I will update the model later.
-
-*In development . . .*
 
 References:
 - [How to Calculate Autocorrelation in Python?](https://www.geeksforgeeks.org/how-to-calculate-autocorrelation-in-python/)
@@ -1143,11 +1141,11 @@ This solution of encoding the service account key file as base64 is not the best
 
 From this project, we learned how to:
 - **Design data architecture, and select tools for each process** to be used in the project.
-- **Set up environment for virtualization** to simulate the local environment such as database, and web server.
+- **Set up environment for virtualization** to simulate the local environment such as database, and webserver.
 - **Create an ETL pipeline** to extract data from various sources, transform the data, and load the data to the target database.
 - **Utilize cloud services** to extend the datalake, data warehouse to production.
 - **Create a dashboard** to visualize the data and analyze the business.
-- **Develop machine learning models** to predict the future sales, customer segments, and customer churn.
+- **Develop machine learning models** to predict the future sales, customer segments, and inferencing customer buying behavior.
 - **Deploy the model to production** to leverage the business using API web service, and cloud services.
 
 This is the biggest personal project I've ever done so far, and I learned a lot from it. I hope it can be useful for anyone reading this as well.  Although this project is not fully finished yet, but I will keep working on it and update it continuously as my knowledge and experience grow.

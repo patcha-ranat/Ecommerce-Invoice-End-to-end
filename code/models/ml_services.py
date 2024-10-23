@@ -13,19 +13,7 @@ from sklearn.inspection import permutation_importance
 from abstract import AbstractMLService, AbstractMLProcessor
 
 
-class BaseMLService(AbstractMLService):
-    def __init__(self):
-        super().__init__()
-        self.df: pd.DataFrame
-
-    @classmethod
-    def get_input(self, df: pd.DataFrame) -> None:
-        """Get input DataFrame into class instance improving readibility and chaining between ML services"""
-        self.df = df.copy()
-        return self
-
-
-class CustomerProfilingService(BaseMLService):
+class CustomerProfilingService(AbstractMLService):
     """
     A Service to apply logic into e-commerce sales transaction to formulate customer profile with RFM framework.
 
@@ -49,9 +37,9 @@ class CustomerProfilingService(BaseMLService):
     ```
     """
 
-    def __init__(self):
+    def __init__(self, df: pd.DataFrame):
         super().__init__()
-        self.df: pd.DataFrame
+        self.df = df
         self.unique_invoice: pd.DataFrame
         self.customer_profile: pd.DataFrame
 
@@ -246,7 +234,7 @@ class CustomerProfilingService(BaseMLService):
         return enriched_customer_profile
 
 
-class CustomerSegmentationService(BaseMLService):
+class CustomerSegmentationService(AbstractMLService):
     """
     Segment customer into clusters using their buying behavior (customer profile) and KMeans algorithm
 
@@ -267,9 +255,9 @@ class CustomerSegmentationService(BaseMLService):
     ```
     """
 
-    def __init__(self):
+    def __init__(self, df: pd.DataFrame):
         super().__init__()
-        self.df: pd.DataFrame
+        self.df = df
         self.scaler: RobustScaler
 
     def scale(self, df: pd.DataFrame) -> tuple[pd.DataFrame, RobustScaler]:
@@ -375,7 +363,7 @@ class CustomerSegmentationService(BaseMLService):
         return output
 
 
-class ClusterInterpretationService(BaseMLService):
+class ClusterInterpretationService(AbstractMLService):
     """
     Cluster Interpreter using LightGBM to consider permutation feature importance for each cluster.
 
@@ -403,9 +391,9 @@ class ClusterInterpretationService(BaseMLService):
     ```
     """
 
-    def __init__(self):
+    def __init__(self, df: pd.DataFrame):
         super().__init__()
-        self.df = pd.DataFrame
+        self.df = df
         self.X: pd.DataFrame
         self.y: pd.Series
 
@@ -653,32 +641,18 @@ class ClusterInterpretationService(BaseMLService):
 class MlProcessor(AbstractMLProcessor):
     def __init__(
         self,
-        df: pd.DataFrame,
-        profiler: CustomerProfilingService,
-        segmenter: CustomerSegmentationService,
-        interpreter: ClusterInterpretationService,
+        df: pd.DataFrame
     ):
         super().__init__()
         self.df = df.copy()
-        self.profiler = profiler
-        self.segmenter = segmenter
-        self.interpreter = interpreter
 
     def process(self) -> dict:
         """Wrapper Orchestrate all processes and ml services"""
 
-        enriched_customer_profile: pd.DataFrame = self.profiler.get_input(
-            df=self.df
-        ).process()
-
-        output_segmenter: dict = self.segmenter.get_input(
-            df=enriched_customer_profile
-        ).process()
-
-        output_interpreter: dict = self.interpreter.get_input(
-            df=output_segmenter.get("output_df")
-        ).process()
-
+        enriched_customer_profile: pd.DataFrame = CustomerProfilingService(df=self.df).process()
+        output_segmenter: dict = CustomerSegmentationService(df=enriched_customer_profile).process()
+        output_interpreter: dict = ClusterInterpretationService(df=output_segmenter.get("output_df")).process()
+        
         output = {
             "df_cluster_rfm": output_segmenter.get("output_df"),
             "df_cluster_importance": output_interpreter.get("cluster_df"),
