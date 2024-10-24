@@ -1,9 +1,12 @@
-# import os
+import os
+from typing import Any
 from pathlib import Path
 import logging
+import json
 
 import pandas as pd
 import duckdb
+import pickle
 
 from abstract import AbstractIOReaderWriter, AbstractIOProcessor
 
@@ -136,11 +139,11 @@ class InputProcessor(AbstractIOProcessor):
 
     def __init__(
         self,
-        source_type: str,
+        env: str,
         method: str,
         input_path: str = None,
     ):
-        self.source_type = source_type
+        self.env = env
         self.method = method
         self.input_path = input_path
         self.factory = {
@@ -150,7 +153,7 @@ class InputProcessor(AbstractIOProcessor):
         }
 
     def process(self):
-        reader_instance = self.factory.get(self.source_type)
+        reader_instance = self.factory.get(self.env)
         reader_args = {
             "method": self.method,
             "input_path": self.input_path,
@@ -158,7 +161,7 @@ class InputProcessor(AbstractIOProcessor):
         reader = reader_instance(**reader_args)
 
         if reader_instance:
-            return reader
+            return reader.read()
         else:
             raise Exception("No InputReader assigned in InputProcessor factory")
 
@@ -166,16 +169,87 @@ class InputProcessor(AbstractIOProcessor):
 class LocalOutputWriter(BaseIOReaderWriter):
     def __init__(
         self,
-        df: pd.DataFrame,
         method: str,
         output_path: str,
+        output: dict,
     ) -> None:
         super().__init__()
-        self.df = df
         self.method = method
-        self.output_path = output_path
+        self.output_path = Path(output_path)
+        self.output = output
 
         return self.write()
+
+    def write_element(
+        self, 
+        output: Any, 
+        element_type: str, 
+        filename: str
+    ) -> None:
+        """
+        Writing output file depends on arguments
+
+        Parameters
+        ----------
+        - output: pd.DataFrame | KMeans | LGBMClassifier | dict
+        - element_type: str
+        - filename: str
+        """
+        if element_type == "data":
+            # prep filename and path
+            data_file_name = f"{str(filename)}.parquet"
+            data_path = self.output_path + "data" + data_file_name
+
+            # export
+            output.to_parquet(data_path)
+            
+            # logs
+            logging.info(f"Successfully export data to {str(data_path)} output as {data_file_name}")
+        
+        elif element_type == "model":
+            # prep path
+            model_path = self.output_path + "model"
+            
+            # dynamic bump model version if available
+            files = os.listdir(model_path)
+            model_files = [file for file in files if file.startswith(filename)]
+
+            if len(model_files) != 0:
+                version = int(Path(max(model_files)).stem.split("_v")[1]) + 1
+            else:
+                version = 1
+            
+            # prep filename and path
+            model_file_name = f"{filename}_{version}.pkl"
+            model_path = model_path + model_file_name
+
+            # export
+            with open(model_path, "wb") as f:
+                pickle.dump(output, f)
+                f.close()
+
+            # logs
+            logging.info(f"Successfully export model to {str(model_path)} output as {model_file_name}")
+
+        elif element_type == "artifact":
+            # aka control file as json
+            # prep filename and path
+            artifact_file_name = f"{filename}.json"
+            artifact_path = self.output_path + "artifact" + artifact_file_name
+
+            # export
+            # TODO: improve exporting control file
+            # update control file
+            if os.path.isfile(path=artifact_path):
+                pass
+            # create control file
+            else:
+                with open(artifact_path, 'w') as f:
+                    json.dump(output, f)
+                    f.close()
+
+            # logs
+            logging.info(f"Successfully export control file (artifact) to {str(artifact_path)} output as {artifact_file_name}")
 
     def write(self, sql_path: str = None, sql_params: dict = None) -> None:
         if self.method == "db":
@@ -199,12 +273,33 @@ class LocalOutputWriter(BaseIOReaderWriter):
             return 1
 
         elif self.method == "filesystem":
-
             # writing file
             logging.info(f"Writing file: {Path(self.output_path).name}")
-            self.df.to_parquet(self.output_path)
+            
+            # data model
+            df_cluster_rfm: pd.DataFrame = self.output.get("df_cluster_rfm")
+            df_cluster_importance: pd.DataFrame = self.output.get("df_cluster_importance")
 
-            return 1
+            self.write_element(output=df_cluster_rfm, element_type="data", filename="df_cluster_rfm")
+            self.write_element(output=df_cluster_importance, element_type="data", filename="df_cluster_importance")
+
+            # ml model
+            segmenter_trained = self.output.get("segmenter_trained")
+            segmenter_scaler = self.output.get("segmenter_scaler")
+            interpreter = self.output.get("interpreter")
+
+            self.write_element(output=segmenter_trained, element_type="model", filename="kmeans_segmenter")
+            self.write_element(output=segmenter_scaler, element_type="model", filename="segmenter_scaler")
+            self.write_element(output=interpreter, element_type="model", filename="lgbm_interpreter")
+
+
+            # other artifacts
+            interpreter_params = self.output.get("interpreter_params")
+            interpreter_metrics = self.output.get("interpreter_metrics")
+            # is_anomaly_exist = self.output.get("is_anomaly_exist") # boolean
+            self.write_element(output=interpreter_params, element_type="artifact", filename="control_file")
+            self.write_element(output=interpreter_metrics, element_type="artifact", filename="control_file")
+            # self.write_element(output=is_anomaly_exist, element_type="artifact", filename="control_file")
 
         else:
             raise Exception("Unacceptable `method` argument for Reader.")
@@ -220,12 +315,16 @@ class DockerDatabaseOutputWriter(BaseIOReaderWriter):
 
 class OutputProcessor(AbstractIOProcessor):
     def __init__(
-        self, target_type: str, method: str, output_path: str, df: pd.DataFrame
+        self, 
+        env: str, 
+        method: str, 
+        output_path: str,
+        output: dict
     ):
-        self.target_type = target_type
+        self.env = env
         self.method = method
         self.output_path = output_path
-        self.df = df
+        self.output = output
         self.factory = {
             "local": LocalOutputWriter,
             "postgresql": DockerDatabaseOutputWriter,
@@ -233,15 +332,15 @@ class OutputProcessor(AbstractIOProcessor):
         }
 
     def process(self):
-        writer_instance = self.factory.get(self.target_type)
+        writer_instance = self.factory.get(self.env)
         writer_args = {
-            "df": self.df,
             "method": self.method,
             "output_path": self.output_path,
+            "output": self.output
         }
         writer = writer_instance(**writer_args)
 
         if writer_instance:
-            return writer
+            return writer.write()
         else:
             raise Exception("No OutputWriter assigned in OutputProcessor factory")
