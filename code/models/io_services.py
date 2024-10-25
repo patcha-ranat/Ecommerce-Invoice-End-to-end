@@ -15,6 +15,12 @@ class BaseIOReaderWriter(AbstractIOReaderWriter):
     def __init__(self):
         super().__init__()
 
+    @property
+    def __str__(self):
+        bases = [base.__name__ for base in self.__class__.__bases__]
+        bases.append(self.__class__.__name__)
+        return ".".join(bases)
+
     @staticmethod
     def is_db_exists(input_path: str) -> bool:
         # os.path.isfile(path=input_path) -> bool
@@ -33,6 +39,17 @@ class BaseIOReaderWriter(AbstractIOReaderWriter):
             statement = sql_f.read()
         sql_f.close()
         return statement
+
+
+class BaseIOProcessor(AbstractIOProcessor):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def __str__(self):
+        bases = [base.__name__ for base in self.__class__.__bases__]
+        bases.append(self.__class__.__name__)
+        return ".".join(bases)
 
 
 class LocalInputReader(BaseIOReaderWriter):
@@ -67,12 +84,13 @@ class LocalInputReader(BaseIOReaderWriter):
         self.init_data_path = init_data_path
 
         if self.is_db_exists(input_path):
-            pass
+            logging.info("Input database exists, no initialization required")
         elif method == "db":
+            logging.info("Input database not exists, method 'db', initializing db...")
             self.init_db()
         elif method == "filesystem":
             logging.warning(
-                "`method` parameter is given as 'filesystem', no initialization required"
+                "method 'filesystem', no initialization required"
             )
         else:
             raise Exception(
@@ -98,6 +116,8 @@ class LocalInputReader(BaseIOReaderWriter):
 
     def read(self, sql_path: str = None, sql_params: dict = None) -> pd.DataFrame:
         if self.method == "db":
+            logging.info(f"Reading db path from: {self.input_path}")
+
             # connect db
             cursor, con = self.connect_db(path=sql_path)
 
@@ -109,8 +129,7 @@ class LocalInputReader(BaseIOReaderWriter):
             return df
 
         elif self.method == "filesystem":
-            # check redundant argument
-            logging.warning("Reading filesystem path with `input_path` parameter.")
+            logging.info(f"Reading filesystem path from: {self.input_path}")
 
             # reading file
             logging.info(f"Reading file: {Path(self.input_path).name}")
@@ -132,7 +151,7 @@ class DockerDatabaseInputReader(BaseIOReaderWriter):
     pass
 
 
-class InputProcessor(AbstractIOProcessor):
+class InputProcessor(BaseIOProcessor):
     """
     Entrypoint for InputReader instance, selecting connection/environment type by given parameters.
     """
@@ -153,12 +172,17 @@ class InputProcessor(AbstractIOProcessor):
         }
 
     def process(self):
+        logging.info(f"Processor: {self.__str__}")
+
         reader_instance = self.factory.get(self.env)
         reader_args = {
             "method": self.method,
             "input_path": self.input_path,
         }
         reader = reader_instance(**reader_args)
+        
+        logging.info(f"Selected reader: {reader.__str__}")
+        logging.info(f"Reader arguments: {reader_args}")
 
         if reader_instance:
             return reader.read()
@@ -179,6 +203,16 @@ class LocalOutputWriter(BaseIOReaderWriter):
         self.output = output
 
         return self.write()
+
+    def build_flag_dict(self, key: str, value: bool) -> dict:
+        return {key: value}
+
+    def build_control_file_dict(self, artifacts: list[dict]) -> dict:
+        control_file_dict: dict = {}
+        for artifact in artifacts:
+            control_file_dict = {**control_file_dict, **artifact}
+
+        return control_file_dict
 
     def write_element(
         self, 
@@ -238,15 +272,9 @@ class LocalOutputWriter(BaseIOReaderWriter):
             artifact_path = self.output_path + "artifact" + artifact_file_name
 
             # export
-            # TODO: improve exporting control file
-            # update control file
-            if os.path.isfile(path=artifact_path):
-                pass
-            # create control file
-            else:
-                with open(artifact_path, 'w') as f:
-                    json.dump(output, f)
-                    f.close()
+            with open(artifact_path, "w") as f:
+                json.dump(output, f)
+                f.close()
 
             # logs
             logging.info(f"Successfully export control file (artifact) to {str(artifact_path)} output as {artifact_file_name}")
@@ -277,6 +305,7 @@ class LocalOutputWriter(BaseIOReaderWriter):
             logging.info(f"Writing file: {Path(self.output_path).name}")
             
             # data model
+            logging.info("Exporting... Data Models")
             df_cluster_rfm: pd.DataFrame = self.output.get("df_cluster_rfm")
             df_cluster_importance: pd.DataFrame = self.output.get("df_cluster_importance")
 
@@ -284,6 +313,7 @@ class LocalOutputWriter(BaseIOReaderWriter):
             self.write_element(output=df_cluster_importance, element_type="data", filename="df_cluster_importance")
 
             # ml model
+            logging.info("Exporting... ML Models")
             segmenter_trained = self.output.get("segmenter_trained")
             segmenter_scaler = self.output.get("segmenter_scaler")
             interpreter = self.output.get("interpreter")
@@ -294,12 +324,18 @@ class LocalOutputWriter(BaseIOReaderWriter):
 
 
             # other artifacts
+            logging.info("Exporting... Artifact (Control file)")
+
+            is_anomaly_exist = self.output.get("is_anomaly_exist") # boolean
             interpreter_params = self.output.get("interpreter_params")
             interpreter_metrics = self.output.get("interpreter_metrics")
-            # is_anomaly_exist = self.output.get("is_anomaly_exist") # boolean
-            self.write_element(output=interpreter_params, element_type="artifact", filename="control_file")
-            self.write_element(output=interpreter_metrics, element_type="artifact", filename="control_file")
-            # self.write_element(output=is_anomaly_exist, element_type="artifact", filename="control_file")
+
+            # aggregate artifact
+            anomaly_dict = self.build_flag_dict(key="is_anomaly_exist", value=is_anomaly_exist)
+            artifacts = [interpreter_params, interpreter_metrics, anomaly_dict]
+            control_file_dict =  self.build_control_file_dict(artifacts=artifacts)
+
+            self.write_element(output=control_file_dict, element_type="artifact", filename="control_file")
 
         else:
             raise Exception("Unacceptable `method` argument for Reader.")
@@ -313,7 +349,7 @@ class DockerDatabaseOutputWriter(BaseIOReaderWriter):
     pass
 
 
-class OutputProcessor(AbstractIOProcessor):
+class OutputProcessor(BaseIOProcessor):
     def __init__(
         self, 
         env: str, 
@@ -332,6 +368,8 @@ class OutputProcessor(AbstractIOProcessor):
         }
 
     def process(self):
+        logging.info(f"Processor: {self.__str__}")
+
         writer_instance = self.factory.get(self.env)
         writer_args = {
             "method": self.method,
@@ -339,6 +377,9 @@ class OutputProcessor(AbstractIOProcessor):
             "output": self.output
         }
         writer = writer_instance(**writer_args)
+
+        logging.info(f"Selected writer: {writer.__str__}")
+        logging.info(f"Writer arguments: {writer_args}")
 
         if writer_instance:
             return writer.write()

@@ -23,7 +23,7 @@ def entrypoint():
     )
 
     args, unknown_args = parser.parse_known_args()
-    # args = parser.parse_args()
+    # args = parser.parse_args() # get only known args
 
     if len(unknown_args) != 0:
         logging.warning(f"Unknow arguments: {unknown_args}")
@@ -31,7 +31,9 @@ def entrypoint():
     logging.info(f"Input argument: {args}")
 
     # process
-    # input
+    # input service
+    logging.info("Executing... InputProcessor")
+    
     input_processor = InputProcessor(
         env=args.env,
         method=args.method, 
@@ -39,19 +41,29 @@ def entrypoint():
     )
     df = input_processor.process()
     
+    logging.info("Success: InputProcessor")
+    
     # ml services
+    logging.info("Executing... MlProcessor")
+    
     ml_processor = MlProcessor(df=df)
     output: dict = ml_processor.process()
+    
+    logging.info("Success: MlProcessor")
 
-    # output
+    # output service
+    logging.info("Executing... OutputProcessor")
+    
     output_processor = OutputProcessor(
         env=args.env,
         method=args.method,
         output_path=args.output_path,
         output=output
     )
-
     output_processor.process()
+    
+    logging.info("Success: OutputProcessor")
+
 
 if __name__ == "__main__":
     entrypoint()
