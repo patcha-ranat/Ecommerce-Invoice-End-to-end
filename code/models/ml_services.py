@@ -13,7 +13,22 @@ from sklearn.inspection import permutation_importance
 from abstract import AbstractMLService, AbstractMLProcessor
 
 
-class CustomerProfilingService(AbstractMLService):
+# set pandas warning
+pd.options.mode.chained_assignment = None  # default='warn'
+
+class BaseMLService(AbstractMLService):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def __str__(self):
+        # TODO enrich logging to ml service
+        bases = [base.__name__ for base in self.__class__.__bases__]
+        bases.append(self.__class__.__name__)
+        return ".".join(bases)
+
+
+class CustomerProfilingService(BaseMLService):
     """
     A Service to apply logic into e-commerce sales transaction to formulate customer profile with RFM framework.
 
@@ -40,7 +55,7 @@ class CustomerProfilingService(AbstractMLService):
     def __init__(self, df: pd.DataFrame):
         super().__init__()
         self.df = df
-        self.unique_invoice: pd.DataFrame
+        self.unique_invoice: pd.DataFrame = None
         self.customer_profile: pd.DataFrame
 
     def drop_anonymous(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -49,7 +64,7 @@ class CustomerProfilingService(AbstractMLService):
         df = df.drop(index=anonymous_customer_index)
         return df
 
-    def distinct_customer_invoice(self, df: pd.DataFrame | None) -> pd.DataFrame:
+    def distinct_customer_invoice(self, df: pd.DataFrame = None) -> pd.DataFrame:
         """Create/update class attribute of unique_invoice with unique customer-invoice DataFrame for re-usage"""
         if self.unique_invoice is not None:
             return self.unique_invoice.copy()
@@ -112,7 +127,9 @@ class CustomerProfilingService(AbstractMLService):
         return customer_profile
 
     def feature_en_additional(
-        self, customer_profile: pd.DataFrame, df: pd.DataFrame
+        self, 
+        customer_profile: pd.DataFrame, 
+        df: pd.DataFrame
     ) -> pd.DataFrame:
         """
         Execute Feature Engineering for a better customer behavior segmentation
@@ -234,7 +251,7 @@ class CustomerProfilingService(AbstractMLService):
         return enriched_customer_profile
 
 
-class CustomerSegmentationService(AbstractMLService):
+class CustomerSegmentationService(BaseMLService):
     """
     Segment customer into clusters using their buying behavior (customer profile) and KMeans algorithm
 
@@ -280,11 +297,11 @@ class CustomerSegmentationService(AbstractMLService):
 
         return scaled_df, scaler
 
-    def train(self, df: pd.DataFrame) -> tuple[list, KMeans]:
+    def train(self, df: pd.DataFrame) -> list:
         """create distortions for the dataset with the scaled customer_profile"""
         # prepare variables for looping
-        feature_number = len(df.columns)
-        distortions = []
+        feature_number: int = len(df.columns)
+        distortions: list = []
 
         for k in range(1, feature_number + 1):
             kmeans = KMeans(
@@ -295,7 +312,7 @@ class CustomerSegmentationService(AbstractMLService):
 
         return distortions
 
-    def find_best_elbow(distortions: list) -> int:
+    def find_best_elbow(self, distortions: list) -> int:
         """
         Function to find the optimal k considered by distortions
         """
@@ -363,7 +380,7 @@ class CustomerSegmentationService(AbstractMLService):
         return output
 
 
-class ClusterInterpretationService(AbstractMLService):
+class ClusterInterpretationService(BaseMLService):
     """
     Cluster Interpreter using LightGBM to consider permutation feature importance for each cluster.
 
@@ -615,9 +632,11 @@ class ClusterInterpretationService(AbstractMLService):
 
     def process(self) -> dict:
         X_train, X_test, y_train, y_test = self.split_data(df=self.df, test_size=0.2)
-        self.train_interpreter(X_train=X_train, y_train=y_train)
+        trained_search = self.train_interpreter(X_train=X_train, y_train=y_train)
         output_eval_trained_interpreter: dict = self.eval_trained_interpreter(
-            X_test=X_test, y_test=y_test
+            trained_search=trained_search,
+            X_test=X_test, 
+            y_test=y_test
         )
         best_estimator = output_eval_trained_interpreter.get("best_estimator")
         best_params = output_eval_trained_interpreter.get("best_params")
@@ -645,6 +664,12 @@ class MlProcessor(AbstractMLProcessor):
     ):
         super().__init__()
         self.df = df.copy()
+
+    @property
+    def __str__(self):
+        bases = [base.__name__ for base in self.__class__.__bases__]
+        bases.append(self.__class__.__name__)
+        return ".".join(bases)
 
     def process(self) -> dict:
         """Wrapper Orchestrate all processes and ml services"""

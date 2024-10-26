@@ -8,10 +8,10 @@ import pandas as pd
 import duckdb
 import pickle
 
-from abstract import AbstractIOReaderWriter, AbstractIOProcessor
+from abstract import AbstractInputReader, AbstractOutputWriter, AbstractIOProcessor
 
 
-class BaseIOReaderWriter(AbstractIOReaderWriter):
+class BaseInputReader(AbstractInputReader):
     def __init__(self):
         super().__init__()
 
@@ -41,6 +41,17 @@ class BaseIOReaderWriter(AbstractIOReaderWriter):
         return statement
 
 
+class BaseOutputWriter(AbstractOutputWriter):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def __str__(self):
+        bases = [base.__name__ for base in self.__class__.__bases__]
+        bases.append(self.__class__.__name__)
+        return ".".join(bases)
+
+
 class BaseIOProcessor(AbstractIOProcessor):
     def __init__(self):
         super().__init__()
@@ -52,7 +63,7 @@ class BaseIOProcessor(AbstractIOProcessor):
         return ".".join(bases)
 
 
-class LocalInputReader(BaseIOReaderWriter):
+class LocalInputReader(BaseInputReader):
     """
     :param method: *(Required)* Source type to read from.\n
         Parameters choices: ['db', 'filesystem']
@@ -96,7 +107,6 @@ class LocalInputReader(BaseIOReaderWriter):
             raise Exception(
                 "Database is not exist. Unacceptable `method` argument for Reader."
             )
-        return self
 
     def init_db(self) -> None:
         # connect local db
@@ -143,11 +153,11 @@ class LocalInputReader(BaseIOReaderWriter):
             raise Exception("Unacceptable `method` argument for Reader.")
 
 
-class GCPInputReader(BaseIOReaderWriter):
+class GCPInputReader(BaseInputReader):
     pass
 
 
-class DockerDatabaseInputReader(BaseIOReaderWriter):
+class DockerDatabaseInputReader(BaseInputReader):
     pass
 
 
@@ -190,7 +200,7 @@ class InputProcessor(BaseIOProcessor):
             raise Exception("No InputReader assigned in InputProcessor factory")
 
 
-class LocalOutputWriter(BaseIOReaderWriter):
+class LocalOutputWriter(BaseOutputWriter):
     def __init__(
         self,
         method: str,
@@ -201,8 +211,6 @@ class LocalOutputWriter(BaseIOReaderWriter):
         self.method = method
         self.output_path = Path(output_path)
         self.output = output
-
-        return self.write()
 
     def build_flag_dict(self, key: str, value: bool) -> dict:
         return {key: value}
@@ -341,11 +349,11 @@ class LocalOutputWriter(BaseIOReaderWriter):
             raise Exception("Unacceptable `method` argument for Reader.")
 
 
-class GCPOutputWriter(BaseIOReaderWriter):
+class GCPOutputWriter(BaseOutputWriter):
     pass
 
 
-class DockerDatabaseOutputWriter(BaseIOReaderWriter):
+class DockerDatabaseOutputWriter(BaseOutputWriter):
     pass
 
 

@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 
 
 # Abstract Class
-class AbstractIOReaderWriter(ABC):
-    """Abstract class for reading/writing data depending on source type and method"""
+class AbstractInputReader(ABC):
+    """Abstract class for reading data depending on given source type and method"""
 
     @abstractmethod
     def is_db_exists(self):
@@ -25,6 +25,14 @@ class AbstractIOReaderWriter(ABC):
     def read(self):
         pass
 
+
+class AbstractOutputWriter(ABC):
+    """Abstract class for writing data depending on given source type and method"""
+    
+    @abstractmethod
+    def write_element(self):
+        pass
+    
     @abstractmethod
     def write(self):
         pass

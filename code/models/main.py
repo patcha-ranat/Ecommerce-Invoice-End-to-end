@@ -5,6 +5,10 @@ from io_services import InputProcessor, OutputProcessor
 from ml_services import MlProcessor
 
 
+# set basic logging configuration
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+# logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
+
 def entrypoint():
     parser = argparse.ArgumentParser(
         description="AI-Driven Interpretable Dynamic Customer Segmentation"
