@@ -3,6 +3,7 @@ from typing import Any
 from pathlib import Path
 import logging
 import json
+from datetime import datetime
 
 import pandas as pd
 import duckdb
@@ -94,11 +95,12 @@ class LocalInputReader(BaseInputReader):
         self.init_script_path = init_script_path
         self.init_data_path = init_data_path
 
-        if self.is_db_exists(input_path):
-            logging.info("Input database exists, no initialization required")
-        elif method == "db":
-            logging.info("Input database not exists, method 'db', initializing db...")
-            self.init_db()
+        if method == "db":
+            if self.is_db_exists(input_path):
+                logging.info("Input database exists, no initialization required")
+            else:
+                logging.info("Input database not exists, method 'db', initializing db...")
+                self.init_db()
         elif method == "filesystem":
             logging.warning(
                 "method 'filesystem', no initialization required"
@@ -240,17 +242,24 @@ class LocalOutputWriter(BaseOutputWriter):
         if element_type == "data":
             # prep filename and path
             data_file_name = f"{str(filename)}.parquet"
-            data_path = self.output_path + "data" + data_file_name
+            current_date = datetime.today().date().strftime("%Y-%m-%d")
+            data_path = self.output_path / "data" / current_date
+
+            # create directory if not exist
+            data_path.mkdir(parents=True, exist_ok=True)
 
             # export
-            output.to_parquet(data_path)
+            output.to_parquet(data_path / data_file_name)
             
             # logs
             logging.info(f"Successfully export data to {str(data_path)} output as {data_file_name}")
         
         elif element_type == "model":
             # prep path
-            model_path = self.output_path + "model"
+            model_path = self.output_path / "model"
+
+            # create directory if not exist
+            model_path.mkdir(parents=True, exist_ok=True)
             
             # dynamic bump model version if available
             files = os.listdir(model_path)
@@ -262,8 +271,8 @@ class LocalOutputWriter(BaseOutputWriter):
                 version = 1
             
             # prep filename and path
-            model_file_name = f"{filename}_{version}.pkl"
-            model_path = model_path + model_file_name
+            model_file_name = f"{filename}_v{version}.pkl"
+            model_path = model_path / model_file_name
 
             # export
             with open(model_path, "wb") as f:
@@ -277,15 +286,18 @@ class LocalOutputWriter(BaseOutputWriter):
             # aka control file as json
             # prep filename and path
             artifact_file_name = f"{filename}.json"
-            artifact_path = self.output_path + "artifact" + artifact_file_name
+            artifact_path = self.output_path / "artifact"
+
+            # create directory if not exist
+            artifact_path.mkdir(parents=True, exist_ok=True)
 
             # export
-            with open(artifact_path, "w") as f:
+            with open(artifact_path / artifact_file_name, "+w") as f:
                 json.dump(output, f)
                 f.close()
 
             # logs
-            logging.info(f"Successfully export control file (artifact) to {str(artifact_path)} output as {artifact_file_name}")
+            logging.info(f"Successfully export control file (artifact) to {str(artifact_path)} as {artifact_file_name}")
 
     def write(self, sql_path: str = None, sql_params: dict = None) -> None:
         if self.method == "db":
@@ -310,7 +322,7 @@ class LocalOutputWriter(BaseOutputWriter):
 
         elif self.method == "filesystem":
             # writing file
-            logging.info(f"Writing file: {Path(self.output_path).name}")
+            logging.info(f"Writing file to: {Path(self.output_path)}")
             
             # data model
             logging.info("Exporting... Data Models")
@@ -375,7 +387,29 @@ class OutputProcessor(BaseIOProcessor):
             "gcp": GCPOutputWriter,
         }
 
-    def process(self):
+    def log_writer_args(self, writer_args: dict[str, Any]) -> None:
+        """
+        Exclude DataFrame element from output dict for cleaned logging
+        """
+        output_dict: dict = writer_args.get("output")
+        
+        output_dict_output = {}
+        output_dict_output["df_cluster_rfm"] = True if output_dict.get("df_cluster_rfm") is not None else False
+        output_dict_output["df_cluster_importance"] = True if output_dict.get("df_cluster_importance") is not None else False
+        output_dict_output["segmenter_trained"] = True if output_dict.get("segmenter_trained") is not None else False
+        output_dict_output["segmenter_scaler"] = True if output_dict.get("segmenter_scaler") is not None else False
+        output_dict_output["interpreter"] = True if output_dict.get("interpreter") is not None else False
+        output_dict_output["interpreter_params"] = output_dict.get("interpreter_params")
+        output_dict_output["interpreter_metrics"] = output_dict.get("interpreter_metrics")
+        output_dict_output["interpreter_exist"] = output_dict.get("interpreter_exist")
+        
+        output_log = {**writer_args}
+        output_log["output"] = output_dict_output
+
+        # pretty logs
+        logging.info(f"Writer arguments: {output_log}")
+
+    def process(self) -> None:
         logging.info(f"Processor: {self.__str__}")
 
         writer_instance = self.factory.get(self.env)
@@ -387,7 +421,7 @@ class OutputProcessor(BaseIOProcessor):
         writer = writer_instance(**writer_args)
 
         logging.info(f"Selected writer: {writer.__str__}")
-        logging.info(f"Writer arguments: {writer_args}")
+        self.log_writer_args(writer_args)
 
         if writer_instance:
             return writer.write()

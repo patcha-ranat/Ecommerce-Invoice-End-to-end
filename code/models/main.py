@@ -7,7 +7,6 @@ from ml_services import MlProcessor
 
 # set basic logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-# logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
 
 def entrypoint():
     parser = argparse.ArgumentParser(
@@ -36,7 +35,7 @@ def entrypoint():
 
     # process
     # input service
-    logging.info("Executing... InputProcessor")
+    logging.info(f"{'-'*50} Executing... InputProcessor {'-'*50}")
     
     input_processor = InputProcessor(
         env=args.env,
@@ -45,18 +44,18 @@ def entrypoint():
     )
     df = input_processor.process()
     
-    logging.info("Success: InputProcessor")
+    logging.info(f"{'-'*50} Success: InputProcessor {'-'*50}")
     
     # ml services
-    logging.info("Executing... MlProcessor")
+    logging.info(f"{'-'*50} Executing... MlProcessor {'-'*50}")
     
     ml_processor = MlProcessor(df=df)
     output: dict = ml_processor.process()
     
-    logging.info("Success: MlProcessor")
+    logging.info(f"{'-'*50} Success: MlProcessor {'-'*50}")
 
     # output service
-    logging.info("Executing... OutputProcessor")
+    logging.info(f"{'-'*50} Executing... OutputProcessor {'-'*50}")
     
     output_processor = OutputProcessor(
         env=args.env,
@@ -66,7 +65,7 @@ def entrypoint():
     )
     output_processor.process()
     
-    logging.info("Success: OutputProcessor")
+    logging.info(f"{'-'*50} Success: OutputProcessor {'-'*50}")
 
 
 if __name__ == "__main__":
