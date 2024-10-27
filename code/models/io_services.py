@@ -84,12 +84,14 @@ class LocalInputReader(BaseInputReader):
         self,
         method: str,
         input_path: str,
+        output_path: str,
         init_script_path: str = "db/sql/init_sales.sql",
         init_data_path: str = "../../data/ecomm_invoice_transaction.parquet",
     ):
         super().__init__()
         self.method = method
-        self.input_path = input_path
+        self.input_path = Path(input_path)
+        self.output_path = Path(output_path)
         # sql_path
         # data_model
         self.init_script_path = init_script_path
@@ -126,30 +128,91 @@ class LocalInputReader(BaseInputReader):
         # .sql() return relation (table)
         con.close()
 
+    def read_data(self, input_path: Path):
+        logging.info(f"Reading data file: {input_path.name}")
+        # Path().stem, Path().suffix, Path().name, Path().parent
+        
+        df = pd.read_parquet(input_path)
+        
+        logging.info(f"Successfully read data file: {input_path.name}")
+
+        return df
+
+    def is_interpreter_exist(self, output_path: Path) -> tuple[bool, Path | None]:
+        """
+        Check if interpreter is available
+
+        Return
+        ------
+        - is_model_exist flag
+        - path to model if exists with latest version (None if no model exists)
+        """
+        logging.info(f"Searching for Interpreter Model from: {output_path}")
+
+        model_path = output_path / "models"
+        files = os.listdir(model_path)
+        model_files = [file for file in files if "interpreter" in file]
+
+        if len(model_files) != 0:
+            logging.info("Interpreter is available, Read Interpreter...")
+
+            latest_model = Path(max(model_files))
+            return True, latest_model
+        else:
+            logging.info("Interpreter is not available,")
+
+            return False, None
+    
+    def read_interpreter(self, model_path: Path) -> Any:
+        """
+        Read interpreter model with pickle
+
+        Return
+        ------
+        Model: Any
+        """
+        with open(model_path, "rb") as f:
+            interpreter = pickle.load(model_path)
+            f.close()
+
+        logging.info("Successfully Read Interpreter")
+        
+        return interpreter
+
     def read(self, sql_path: str = None, sql_params: dict = None) -> pd.DataFrame:
         if self.method == "db":
-            logging.info(f"Reading db path from: {self.input_path}")
+            # logging.info(f"Reading db path from: {self.input_path}")
 
-            # connect db
-            cursor, con = self.connect_db(path=sql_path)
+            # # connect db
+            # cursor, con = self.connect_db(path=sql_path)
 
-            # execute reading input statement, then load to pandas dataframe
-            statement = self.render_sql(sql_path)
-            df = cursor.sql(statement, parameters=sql_params).to_df()
+            # # execute reading input statement, then load to pandas dataframe
+            # statement = self.render_sql(sql_path)
+            # df = cursor.sql(statement, parameters=sql_params).to_df()
 
-            con.close()
-            return df
+            # con.close()
+            # return df
+            raise ValueError("Method 'db' is not implemented yet.")
 
         elif self.method == "filesystem":
             logging.info(f"Reading filesystem path from: {self.input_path}")
 
-            # reading file
-            logging.info(f"Reading file: {Path(self.input_path).name}")
-            # Path().stem, Path().suffix, Path().name, Path().parent
-            df = pd.read_parquet(self.input_path)
-            logging.info(f"Successfully read file: {Path(self.input_path).name}")
+            # reading data
+            df = self.read_data(input_path=self.input_path)
 
-            return df
+            # interpreter
+            interpreter_exists, interpreter_path = self.is_interpreter_exist(output_path=self.output_path)
+            if interpreter_exists:
+                interpreter = self.read_interpreter(interpreter_path)
+            else:
+                interpreter = None
+
+            inputs: dict = {
+                "df": df,
+                "interpreter": interpreter
+            }
+
+            return inputs
 
         else:
             raise Exception("Unacceptable `method` argument for Reader.")
@@ -173,10 +236,12 @@ class InputProcessor(BaseIOProcessor):
         env: str,
         method: str,
         input_path: str = None,
+        output_path: str = None
     ):
         self.env = env
         self.method = method
         self.input_path = input_path
+        self.output_path = output_path
         self.factory = {
             "local": LocalInputReader,
             "postgresql": DockerDatabaseInputReader,
@@ -190,6 +255,7 @@ class InputProcessor(BaseIOProcessor):
         reader_args = {
             "method": self.method,
             "input_path": self.input_path,
+            "output_path": self.output_path
         }
         reader = reader_instance(**reader_args)
         
@@ -375,12 +441,12 @@ class OutputProcessor(BaseIOProcessor):
         env: str, 
         method: str, 
         output_path: str,
-        output: dict
+        outputs: dict
     ):
         self.env = env
         self.method = method
         self.output_path = output_path
-        self.output = output
+        self.outputs = outputs
         self.factory = {
             "local": LocalOutputWriter,
             "postgresql": DockerDatabaseOutputWriter,
@@ -416,7 +482,7 @@ class OutputProcessor(BaseIOProcessor):
         writer_args = {
             "method": self.method,
             "output_path": self.output_path,
-            "output": self.output
+            "output": self.outputs
         }
         writer = writer_instance(**writer_args)
 

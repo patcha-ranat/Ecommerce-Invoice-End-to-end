@@ -40,17 +40,20 @@ def entrypoint():
     input_processor = InputProcessor(
         env=args.env,
         method=args.method, 
-        input_path=args.input_path
+        input_path=args.input_path,
+        output_path=args.output_path
     )
-    df = input_processor.process()
+    inputs: dict = input_processor.process()
+    df = inputs.get("df")
+    interpreter = inputs.get("interpreter")
     
     logging.info(f"{'-'*50} Success: InputProcessor {'-'*50}")
     
     # ml services
     logging.info(f"{'-'*50} Executing... MlProcessor {'-'*50}")
     
-    ml_processor = MlProcessor(df=df)
-    output: dict = ml_processor.process()
+    ml_processor = MlProcessor(df=df, interpreter=interpreter)
+    outputs: dict = ml_processor.process()
     
     logging.info(f"{'-'*50} Success: MlProcessor {'-'*50}")
 
@@ -61,7 +64,7 @@ def entrypoint():
         env=args.env,
         method=args.method,
         output_path=args.output_path,
-        output=output
+        outputs=outputs
     )
     output_processor.process()
     
