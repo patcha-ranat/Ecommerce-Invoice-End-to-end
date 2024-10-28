@@ -157,7 +157,7 @@ class LocalInputReader(BaseInputReader):
             logging.info("Interpreter is available, Read Interpreter...")
 
             latest_model = Path(max(model_files))
-            return True, latest_model
+            return True, model_path / latest_model
         else:
             logging.info("Interpreter is not available,")
 
@@ -172,7 +172,7 @@ class LocalInputReader(BaseInputReader):
         Model: Any
         """
         with open(model_path, "rb") as f:
-            interpreter = pickle.load(model_path)
+            interpreter = pickle.load(f)
             f.close()
 
         logging.info("Successfully Read Interpreter")

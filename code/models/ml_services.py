@@ -1,3 +1,4 @@
+from typing import Any
 from datetime import datetime
 import logging
 
@@ -408,15 +409,22 @@ class ClusterInterpretationService(BaseMLService):
     ```
     """
 
-    def __init__(self, df: pd.DataFrame):
+    def __init__(
+        self, 
+        df: pd.DataFrame,
+        interpreter: Any | None,
+        force_train: bool = False
+    ):
         super().__init__()
         self.df = df
+        self.interpreter = interpreter
+        self.force_train = force_train
         self.X: pd.DataFrame
         self.y: pd.Series
 
     @staticmethod
     def log_evaluation(y_true, y_pred, float_point: int = 4) -> dict:
-        eval_dict = {
+        eval_metadata = {
             "date": datetime.today().date().strftime("%Y-%m-%d"),
             "f1_score_macro": round(
                 f1_score(y_true=y_true, y_pred=y_pred, average="macro"), float_point
@@ -431,7 +439,7 @@ class ClusterInterpretationService(BaseMLService):
             "recall": round(
                 recall_score(y_true=y_true, y_pred=y_pred, average="macro"), float_point
             ),
-            "interpreter_model": None,
+            # TODO: add ml_service to retrieved metadata (artifact/control file) content
             "interpreter_model_version": None,
             "interpreter_train_date": None,
         }
@@ -447,12 +455,19 @@ class ClusterInterpretationService(BaseMLService):
         #     "interpreter_train_date": None
         # }, index=[0])
 
-        return eval_dict
+        return eval_metadata
 
     def split_data(
-        self, df: pd.DataFrame, test_size: float = 0.2
+        self, 
+        df: pd.DataFrame,
+        test_size: float = 0.2
     ) -> tuple[pd.DataFrame | pd.Series]:
-        """Input: enriched_customer_profile with the cluster column"""
+        """
+        Split Data with 'how' method
+
+        - df (pd.DataFrame): enriched_customer_profile with the cluster column
+        - test_size (float): test_size for 'train_test' method
+        """
         self.X = df.drop(columns=["CustomerID", "cluster"])
         self.y = df["cluster"]
 
@@ -500,12 +515,12 @@ class ClusterInterpretationService(BaseMLService):
 
         y_pred = best_estimator.predict(X_test)
 
-        eval_scores = self.log_evaluation(y_true=y_test, y_pred=y_pred, float_point=4)
+        eval_metadata = self.log_evaluation(y_true=y_test, y_pred=y_pred, float_point=4)
 
         output = {
             "best_estimator": best_estimator,
             "best_params": best_params,
-            "eval_scores": eval_scores,
+            "eval_metadata": eval_metadata,
         }
 
         return output
@@ -625,22 +640,50 @@ class ClusterInterpretationService(BaseMLService):
         )
         return cluster_df, is_anomaly_exist
 
-    # for triggering model retraining
-    def is_retrain_required():
-        # TODO: solve this logic
-        return False
+    def is_retrain_required(
+        self,
+        interpreter: Any,
+        X: pd.DataFrame,
+        y: pd.Series,
+        consider_score: str = "f1_score_macro",
+        acceptable_threshold: float = 0.75
+    ) -> tuple[bool, float | None]:
+        """
+        Check if interpreter is effective enough to interpret cluster feature importances
+        """
+        y_pred = interpreter.predict(X)
+        eval_metadata = self.log_evaluation(y_true=y, y_pred=y_pred)
+        score = eval_metadata.get(consider_score)
+
+        if score >= acceptable_threshold:
+            return False, eval_metadata 
+        else:
+            return True, None
 
     def process(self) -> dict:
         X_train, X_test, y_train, y_test = self.split_data(df=self.df, test_size=0.2)
-        trained_search = self.train_interpreter(X_train=X_train, y_train=y_train)
-        output_eval_trained_interpreter: dict = self.eval_trained_interpreter(
-            trained_search=trained_search,
-            X_test=X_test, 
-            y_test=y_test
+        
+        required_retrain, eval_metadata = self.is_retrain_required(
+            interpreter=self.interpreter, 
+            X=self.X, 
+            y=self.y,
+            consider_score="f1_score_macro",
+            acceptable_threshold=0.75
         )
-        best_estimator = output_eval_trained_interpreter.get("best_estimator")
-        best_params = output_eval_trained_interpreter.get("best_params")
-        eval_scores = output_eval_trained_interpreter.get("eval_scores")
+
+        if required_retrain or self.force_train:
+            trained_search = self.train_interpreter(X_train=X_train, y_train=y_train)
+            output_eval_trained_interpreter: dict = self.eval_trained_interpreter(
+                trained_search=trained_search,
+                X_test=X_test, 
+                y_test=y_test
+            )
+            best_estimator = output_eval_trained_interpreter.get("best_estimator")
+            best_params = output_eval_trained_interpreter.get("best_params")
+            eval_metadata = output_eval_trained_interpreter.get("eval_metadata")
+        else:
+            best_estimator = self.interpreter
+            best_params = self.interpreter.get_params()
 
         cluster_df, is_anomaly_exist = self.interpret_cluster(
             tuned_model=best_estimator
@@ -650,7 +693,7 @@ class ClusterInterpretationService(BaseMLService):
             "cluster_df": cluster_df,
             "best_estimator": best_estimator,
             "best_params": best_params,
-            "eval_scores": eval_scores,
+            "eval_metadata": eval_metadata,
             "is_anomaly_exist": is_anomaly_exist,
         }
 
@@ -660,10 +703,14 @@ class ClusterInterpretationService(BaseMLService):
 class MlProcessor(AbstractMLProcessor):
     def __init__(
         self,
-        df: pd.DataFrame
+        df: pd.DataFrame,
+        interpreter: Any | None,
+        force_train: bool = False
     ):
         super().__init__()
         self.df = df.copy()
+        self.interpreter = interpreter
+        self.force_train = force_train
 
     @property
     def __str__(self):
@@ -674,19 +721,30 @@ class MlProcessor(AbstractMLProcessor):
     def process(self) -> dict:
         """Wrapper Orchestrate all processes and ml services"""
 
+        # RFM / Customer Profiling
         enriched_customer_profile: pd.DataFrame = CustomerProfilingService(df=self.df).process()
-        output_segmenter: dict = CustomerSegmentationService(df=enriched_customer_profile).process()
-        output_interpreter: dict = ClusterInterpretationService(df=output_segmenter.get("output_df")).process()
         
-        output = {
+        # Customer Segmentation
+        output_segmenter: dict = CustomerSegmentationService(df=enriched_customer_profile).process()
+        
+        # Interpret Customer Cluster's Importance Features
+        interpret_service = ClusterInterpretationService(
+            df=output_segmenter.get("output_df"), 
+            interpreter=self.interpreter,
+            force_train=self.force_train
+        )
+        output_interpreter: dict = interpret_service.process()
+        
+        # Re-arrange outputs
+        outputs = {
             "df_cluster_rfm": output_segmenter.get("output_df"),
             "df_cluster_importance": output_interpreter.get("cluster_df"),
             "segmenter_trained": output_segmenter.get("trained_kmeans"),
             "segmenter_scaler": output_segmenter.get("fitted_scaler"),
             "interpreter": output_interpreter.get("best_estimator"),
             "interpreter_params": output_interpreter.get("best_params"),
-            "interpreter_metrics": output_interpreter.get("eval_scores"),
+            "interpreter_metrics": output_interpreter.get("eval_metadata"),
             "is_anomaly_exist": output_interpreter.get("is_anomaly_exist"),
         }
 
-        return output
+        return outputs

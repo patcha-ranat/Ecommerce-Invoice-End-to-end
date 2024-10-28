@@ -24,6 +24,9 @@ def entrypoint():
     parser.add_argument(
         "--output_path", type=str, help="", required=True
     )
+    parser.add_argument(
+        "--force_train", action="store_true"
+    )
 
     args, unknown_args = parser.parse_known_args()
     # args = parser.parse_args() # get only known args
@@ -52,7 +55,11 @@ def entrypoint():
     # ml services
     logging.info(f"{'-'*50} Executing... MlProcessor {'-'*50}")
     
-    ml_processor = MlProcessor(df=df, interpreter=interpreter)
+    ml_processor = MlProcessor(
+        df=df, 
+        interpreter=interpreter,
+        force_train=args.force_train
+    )
     outputs: dict = ml_processor.process()
     
     logging.info(f"{'-'*50} Success: MlProcessor {'-'*50}")
