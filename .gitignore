@@ -10,9 +10,13 @@ postgres-db-volume
 __pycache__
 
 # credentials
-*.json
+kaggle.json
+gcs_credentials.json
 default_filename.txt
 ecomm-invoice-kde-aws-iam_accessKeys.csv
+
+# data
+data.json
 
 # scripts
 test.py
@@ -23,7 +27,7 @@ test.py
 terraform.*
 
 # ML models
-*.pkl
+*_model.pkl
 
 # notebook
 revise.ipynb

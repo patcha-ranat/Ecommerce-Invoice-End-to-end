@@ -9,18 +9,61 @@ import pandas as pd
 import duckdb
 import pickle
 
-from abstract import AbstractInputReader, AbstractOutputWriter, AbstractIOProcessor
+from abstract import AbstractIOReaderWriter, AbstractInputReader, AbstractOutputWriter, AbstractIOProcessor
 
 
-class BaseInputReader(AbstractInputReader):
+class BaseIOReaderWriter(AbstractIOReaderWriter):
     def __init__(self):
-        super().__init__()
+        pass
 
     @property
     def __str__(self):
         bases = [base.__name__ for base in self.__class__.__bases__]
         bases.append(self.__class__.__name__)
         return ".".join(bases)
+
+    @staticmethod
+    def list_model_in_path(
+        model_path: str | Path, 
+        model_name: str = None
+    ) -> list[str]:
+        """
+        List models in the specified folder
+        """
+        files = os.listdir(model_path)
+        
+        if model_name is not None:
+            model_files = [file for file in files if model_name in file]
+        else:
+            model_files = files
+        
+        return model_files
+
+    def find_latest_model(
+        self, 
+        model_path: str | Path, 
+        model_name: str
+    ) -> Path | None:
+        """
+        Find the latest model version path with specified model name
+        """
+        model_files = self.list_model_in_path(
+            model_path=model_path,
+            model_name=model_name
+        )
+
+        if len(model_files) != 0:
+            # retrieve the latest model version as a name
+            latest_model = Path(max(model_files))
+            
+            return latest_model
+        else:
+            return None
+
+
+class BaseInputReader(AbstractInputReader, BaseIOReaderWriter):
+    def __init__(self):
+        super().__init__()
 
     @staticmethod
     def is_db_exists(input_path: str) -> bool:
@@ -42,15 +85,9 @@ class BaseInputReader(AbstractInputReader):
         return statement
 
 
-class BaseOutputWriter(AbstractOutputWriter):
+class BaseOutputWriter(AbstractOutputWriter, BaseIOReaderWriter):
     def __init__(self):
         super().__init__()
-
-    @property
-    def __str__(self):
-        bases = [base.__name__ for base in self.__class__.__bases__]
-        bases.append(self.__class__.__name__)
-        return ".".join(bases)
 
 
 class BaseIOProcessor(AbstractIOProcessor):
@@ -138,7 +175,11 @@ class LocalInputReader(BaseInputReader):
 
         return df
 
-    def is_interpreter_exist(self, output_path: Path) -> tuple[bool, Path | None]:
+    def is_model_exist(
+            self, 
+            model_path: str | Path,
+            model_name: str = None
+        ) -> bool:
         """
         Check if interpreter is available
 
@@ -147,23 +188,18 @@ class LocalInputReader(BaseInputReader):
         - is_model_exist flag
         - path to model if exists with latest version (None if no model exists)
         """
-        logging.info(f"Searching for Interpreter Model from: {output_path}")
-
-        model_path = output_path / "models"
-        files = os.listdir(model_path)
-        model_files = [file for file in files if "interpreter" in file]
+        
+        model_files = self.list_model_in_path(
+            model_path=model_path, 
+            model_name=model_name
+        )
 
         if len(model_files) != 0:
-            logging.info("Interpreter is available, Read Interpreter...")
-
-            latest_model = Path(max(model_files))
-            return True, model_path / latest_model
+            return True
         else:
-            logging.info("Interpreter is not available,")
-
-            return False, None
+            return False
     
-    def read_interpreter(self, model_path: Path) -> Any:
+    def read_interpreter(self, output_path: Path) -> Any:
         """
         Read interpreter model with pickle
 
@@ -171,11 +207,33 @@ class LocalInputReader(BaseInputReader):
         ------
         Model: Any
         """
-        with open(model_path, "rb") as f:
-            interpreter = pickle.load(f)
-            f.close()
 
-        logging.info("Successfully Read Interpreter")
+        logging.info(f"Searching for Interpreter Model from: {output_path}")
+
+        model_path = output_path / "models"
+
+        # create folder if not exist
+        model_path.mkdir(parents=True, exist_ok=True)
+
+        if self.is_model_exist(model_path=model_path, model_name="interpreter"):
+            logging.info("Interpreter is available, Read Interpreter...")
+
+            # find latest version
+            latest_mdoel = self.find_latest_model(
+                model_path=model_path,
+                model_name="interpreter"
+            )
+            logging.info(f"Found the latest model as: {latest_mdoel}")
+
+            # read model with pickle
+            with open(model_path / latest_mdoel, "rb") as f:
+                interpreter = pickle.load(f)
+                f.close()
+            logging.info("Successfully Read Interpreter")
+        else:
+            logging.info("Interpreter is not available, Skipped")
+
+            interpreter = None
         
         return interpreter
 
@@ -201,12 +259,9 @@ class LocalInputReader(BaseInputReader):
             df = self.read_data(input_path=self.input_path)
 
             # interpreter
-            interpreter_exists, interpreter_path = self.is_interpreter_exist(output_path=self.output_path)
-            if interpreter_exists:
-                interpreter = self.read_interpreter(interpreter_path)
-            else:
-                interpreter = None
+            interpreter = self.read_interpreter(output_path=self.output_path)
 
+            # formulate input for model services
             inputs: dict = {
                 "df": df,
                 "interpreter": interpreter
@@ -273,22 +328,36 @@ class LocalOutputWriter(BaseOutputWriter):
         self,
         method: str,
         output_path: str,
+        date: str,
         output: dict,
     ) -> None:
         super().__init__()
         self.method = method
         self.output_path = Path(output_path)
+        self.date = date
         self.output = output
 
-    def build_flag_dict(self, key: str, value: bool) -> dict:
-        return {key: value}
-
-    def build_control_file_dict(self, artifacts: list[dict]) -> dict:
+    def build_control_file_dict(self, artifacts: dict[str, Any]) -> dict:
         control_file_dict: dict = {}
-        for artifact in artifacts:
-            control_file_dict = {**control_file_dict, **artifact}
+        control_file_dict["interpreter_params"] = artifacts.get("interpreter_params")
+        control_file_dict["interpreter_metrics"] = artifacts.get("interpreter_metrics")
+        control_file_dict["is_train_interpreter"] = artifacts.get("is_train_interpreter")
+        control_file_dict["is_anomaly_exist"] = artifacts.get("is_anomaly_exist")
 
         return control_file_dict
+
+    def find_latest_model_version(
+        self,
+        model_path: str | Path,
+        model_name: str
+    ) -> int:
+        latest_model = self.find_latest_model(
+            model_path=model_path, 
+            model_name=model_name
+        )
+        latest_version = Path(latest_model).name.split("_v")[-1]
+
+        return latest_version
 
     def write_element(
         self, 
@@ -308,8 +377,8 @@ class LocalOutputWriter(BaseOutputWriter):
         if element_type == "data":
             # prep filename and path
             data_file_name = f"{str(filename)}.parquet"
-            current_date = datetime.today().date().strftime("%Y-%m-%d")
-            data_path = self.output_path / "data" / current_date
+            # date = datetime.today().date().strftime("%Y-%m-%d")
+            data_path = self.output_path / "data" / self.date
 
             # create directory if not exist
             data_path.mkdir(parents=True, exist_ok=True)
@@ -322,7 +391,7 @@ class LocalOutputWriter(BaseOutputWriter):
         
         elif element_type == "model":
             # prep path
-            model_path = self.output_path / "model"
+            model_path = self.output_path / "models"
 
             # create directory if not exist
             model_path.mkdir(parents=True, exist_ok=True)
@@ -341,7 +410,7 @@ class LocalOutputWriter(BaseOutputWriter):
             model_path = model_path / model_file_name
 
             # export
-            with open(model_path, "wb") as f:
+            with open(model_path, "+wb") as f:
                 pickle.dump(output, f)
                 f.close()
 
@@ -352,14 +421,14 @@ class LocalOutputWriter(BaseOutputWriter):
             # aka control file as json
             # prep filename and path
             artifact_file_name = f"{filename}.json"
-            artifact_path = self.output_path / "artifact"
+            artifact_path = self.output_path / "artifact" / self.date
 
             # create directory if not exist
             artifact_path.mkdir(parents=True, exist_ok=True)
 
             # export
             with open(artifact_path / artifact_file_name, "+w") as f:
-                json.dump(output, f)
+                json.dump(output, f, indent=4)
                 f.close()
 
             # logs
@@ -412,13 +481,20 @@ class LocalOutputWriter(BaseOutputWriter):
             # other artifacts
             logging.info("Exporting... Artifact (Control file)")
 
-            is_anomaly_exist = self.output.get("is_anomaly_exist") # boolean
             interpreter_params = self.output.get("interpreter_params")
             interpreter_metrics = self.output.get("interpreter_metrics")
+            is_train_interpreter = self.output.get("is_train_interpreter") # boolean
+            # latest_model_version = self.find_latest_model_version(model_path=) #TODO: solve this logic finding the latest trained model version
+            is_anomaly_exist = self.output.get("is_anomaly_exist") # boolean
 
             # aggregate artifact
-            anomaly_dict = self.build_flag_dict(key="is_anomaly_exist", value=is_anomaly_exist)
-            artifacts = [interpreter_params, interpreter_metrics, anomaly_dict]
+            artifacts = {
+                "interpreter_params": interpreter_params,
+                "interpreter_metrics": interpreter_metrics,
+                "is_train_interpreter": is_train_interpreter,
+                # "latest_trained_model_version": latest_model_version,
+                "is_anomaly_exist": is_anomaly_exist
+            }
             control_file_dict =  self.build_control_file_dict(artifacts=artifacts)
 
             self.write_element(output=control_file_dict, element_type="artifact", filename="control_file")
@@ -441,11 +517,13 @@ class OutputProcessor(BaseIOProcessor):
         env: str, 
         method: str, 
         output_path: str,
+        date: str,
         outputs: dict
     ):
         self.env = env
         self.method = method
         self.output_path = output_path
+        self.date = date
         self.outputs = outputs
         self.factory = {
             "local": LocalOutputWriter,
@@ -459,7 +537,7 @@ class OutputProcessor(BaseIOProcessor):
         """
         output_dict: dict = writer_args.get("output")
         
-        output_dict_output = {}
+        output_dict_output: dict = {}
         output_dict_output["df_cluster_rfm"] = True if output_dict.get("df_cluster_rfm") is not None else False
         output_dict_output["df_cluster_importance"] = True if output_dict.get("df_cluster_importance") is not None else False
         output_dict_output["segmenter_trained"] = True if output_dict.get("segmenter_trained") is not None else False
@@ -467,7 +545,8 @@ class OutputProcessor(BaseIOProcessor):
         output_dict_output["interpreter"] = True if output_dict.get("interpreter") is not None else False
         output_dict_output["interpreter_params"] = output_dict.get("interpreter_params")
         output_dict_output["interpreter_metrics"] = output_dict.get("interpreter_metrics")
-        output_dict_output["interpreter_exist"] = output_dict.get("interpreter_exist")
+        output_dict_output["is_train_interpreter"] = output_dict.get("is_train_interpreter")
+        output_dict_output["is_anomaly_exist"] = output_dict.get("is_anomaly_exist")
         
         output_log = {**writer_args}
         output_log["output"] = output_dict_output
@@ -482,6 +561,7 @@ class OutputProcessor(BaseIOProcessor):
         writer_args = {
             "method": self.method,
             "output_path": self.output_path,
+            "date": self.date,
             "output": self.outputs
         }
         writer = writer_instance(**writer_args)

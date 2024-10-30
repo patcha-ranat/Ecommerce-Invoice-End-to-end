@@ -142,6 +142,7 @@ class CustomerProfilingService(BaseMLService):
         And then post-processing with merging to customer_profile (input RFM) returning a DataFrame
         as 'enriched_customer_profile'
         """
+        customer_profile = customer_profile.copy()
         # 1. is_first_time_buyer
         customer_profile.loc[
             customer_profile["recency"].isnull(), "is_first_time_buyer"
@@ -158,14 +159,13 @@ class CustomerProfilingService(BaseMLService):
         )
         # calculate mean recency
         mean_time_interval = (
-            unique_invoice.groupby("CustomerID")
+            unique_invoice.copy()
+            .groupby("CustomerID")
             .agg({"recency": lambda x: x.diff().abs().mean()})
             .reset_index()
             .sort_values("CustomerID")
         )
-        mean_time_interval = mean_time_interval.rename(
-            columns={"recency": "mean_time_interval"}
-        )
+        mean_time_interval = mean_time_interval.rename(columns={"recency": "mean_time_interval"})
         mean_time_interval["mean_time_interval"] = mean_time_interval[
             "mean_time_interval"
         ].apply(lambda x: round(x, 2))
@@ -173,10 +173,12 @@ class CustomerProfilingService(BaseMLService):
         recency_customer_profile = customer_profile.sort_values(
             "CustomerID"
         ).reset_index(drop=True)
+        # join with coalesce
         mean_time_interval = mean_time_interval.combine_first(
             recency_customer_profile.sort_values("CustomerID")
             .rename(columns={"recency": "mean_time_interval"})
             .reset_index(drop=True)
+            .drop(columns=["frequency", "is_first_time_buyer", "monetary"])
         )
 
         # 3. mean ticket_size (AVG spent per transaction) + mean_qty + mean_unique_item
@@ -646,7 +648,7 @@ class ClusterInterpretationService(BaseMLService):
         X: pd.DataFrame,
         y: pd.Series,
         consider_score: str = "f1_score_macro",
-        acceptable_threshold: float = 0.75
+        acceptable_threshold: float = 0.7
     ) -> tuple[bool, float | None]:
         """
         Check if interpreter is effective enough to interpret cluster feature importances
@@ -663,15 +665,20 @@ class ClusterInterpretationService(BaseMLService):
     def process(self) -> dict:
         X_train, X_test, y_train, y_test = self.split_data(df=self.df, test_size=0.2)
         
-        required_retrain, eval_metadata = self.is_retrain_required(
-            interpreter=self.interpreter, 
-            X=self.X, 
-            y=self.y,
-            consider_score="f1_score_macro",
-            acceptable_threshold=0.75
-        )
+        # check interpreter pre-exists, available to be evaluated
+        if (self.force_train) or (self.interpreter is None):
+            required_retrain = True
+        else:
+            required_retrain, eval_metadata = self.is_retrain_required(
+                interpreter=self.interpreter, 
+                X=self.X, 
+                y=self.y,
+                consider_score="f1_score_macro",
+                acceptable_threshold=0.75
+            ) 
 
-        if required_retrain or self.force_train:
+        # check if the old interpreter drops in performance and requires re-training
+        if required_retrain:
             trained_search = self.train_interpreter(X_train=X_train, y_train=y_train)
             output_eval_trained_interpreter: dict = self.eval_trained_interpreter(
                 trained_search=trained_search,
@@ -680,10 +687,12 @@ class ClusterInterpretationService(BaseMLService):
             )
             best_estimator = output_eval_trained_interpreter.get("best_estimator")
             best_params = output_eval_trained_interpreter.get("best_params")
+            is_train_interpreter = True
             eval_metadata = output_eval_trained_interpreter.get("eval_metadata")
         else:
             best_estimator = self.interpreter
             best_params = self.interpreter.get_params()
+            is_train_interpreter = False
 
         cluster_df, is_anomaly_exist = self.interpret_cluster(
             tuned_model=best_estimator
@@ -694,6 +703,7 @@ class ClusterInterpretationService(BaseMLService):
             "best_estimator": best_estimator,
             "best_params": best_params,
             "eval_metadata": eval_metadata,
+            "is_train_interpreter": is_train_interpreter,
             "is_anomaly_exist": is_anomaly_exist,
         }
 
@@ -744,6 +754,7 @@ class MlProcessor(AbstractMLProcessor):
             "interpreter": output_interpreter.get("best_estimator"),
             "interpreter_params": output_interpreter.get("best_params"),
             "interpreter_metrics": output_interpreter.get("eval_metadata"),
+            "is_train_interpreter": output_interpreter.get("is_train_interpreter"),
             "is_anomaly_exist": output_interpreter.get("is_anomaly_exist"),
         }
 

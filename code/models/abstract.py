@@ -2,6 +2,18 @@ from abc import ABC, abstractmethod
 
 
 # Abstract Class
+class AbstractIOReaderWriter(ABC):
+    """Abstract class for utilizing methods used in both InputReader and OutputWriter"""
+
+    @abstractmethod
+    def list_model_in_path(self):
+        pass
+
+    @abstractmethod
+    def find_latest_model(self):
+        pass
+
+
 class AbstractInputReader(ABC):
     """Abstract class for reading data depending on given source type and method"""
 
