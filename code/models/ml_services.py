@@ -241,13 +241,18 @@ class CustomerProfilingService(BaseMLService):
 
     def process(self) -> pd.DataFrame:
         """Entrypoint for data preprocessing"""
+        logging.info("ML Process -- Customer Profiling (RFM) -- Pre-processing Input")
         df = self.drop_anonymous(df=self.df)
+
+        logging.info("ML Process -- Customer Profiling (RFM) -- Processing RFM Features")
         recency_df = self.get_recency(df=df)
         frequency_df = self.get_frequency(df=df)
         monetary_df = self.get_monetary(df=df)
         customer_profile = self.merge_rfm(
             rfm_dfs=[recency_df, frequency_df, monetary_df]
         )
+        
+        logging.info("ML Process -- Customer Profiling (RFM) -- Additional Feature Engineering")
         enriched_customer_profile = self.feature_en_additional(
             customer_profile=customer_profile, df=df
         )
@@ -365,11 +370,15 @@ class CustomerSegmentationService(BaseMLService):
 
     def process(self) -> dict:
         """Entrypoint to orchestrate the processes"""
+        logging.info("ML Process -- Customer Segmentation (KMeans) -- Scaling Input")
         scaled_df, scaler = self.scale(df=self.df)
 
+        logging.info("ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K Value")
         distortions = self.train(df=scaled_df)
         optimal_k = self.find_best_elbow(distortions=distortions)
+        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Found optimal K Value: {optimal_k}")
 
+        logging.info("ML Process -- Customer Segmentation (KMeans) -- Clustering Input")
         output_df, trained_kmeans = self.clustering(
             df=self.df, scaled_df=scaled_df, optimal_k=optimal_k
         )
@@ -666,9 +675,12 @@ class ClusterInterpretationService(BaseMLService):
         X_train, X_test, y_train, y_test = self.split_data(df=self.df, test_size=0.2)
         
         # check interpreter pre-exists, available to be evaluated
+        logging.info("ML Process -- Cluster Interpretation (LightGBM) -- Evalutaing re-training requirements")
         if (self.force_train) or (self.interpreter is None):
+            logging.info("ML Process -- Cluster Interpretation (LightGBM) -- Model Training is required")
             required_retrain = True
         else:
+            logging.info("ML Process -- Cluster Interpretation (LightGBM) -- Evaluating existing model")
             required_retrain, eval_metadata = self.is_retrain_required(
                 interpreter=self.interpreter, 
                 X=self.X, 
@@ -679,6 +691,7 @@ class ClusterInterpretationService(BaseMLService):
 
         # check if the old interpreter drops in performance and requires re-training
         if required_retrain:
+            logging.info("ML Process -- Cluster Interpretation (LightGBM) -- Training Model")
             trained_search = self.train_interpreter(X_train=X_train, y_train=y_train)
             output_eval_trained_interpreter: dict = self.eval_trained_interpreter(
                 trained_search=trained_search,
@@ -690,10 +703,12 @@ class ClusterInterpretationService(BaseMLService):
             is_train_interpreter = True
             eval_metadata = output_eval_trained_interpreter.get("eval_metadata")
         else:
+            logging.info("ML Process -- Cluster Interpretation (LightGBM) -- Skipped Model Training")
             best_estimator = self.interpreter
             best_params = self.interpreter.get_params()
             is_train_interpreter = False
 
+        logging.info("ML Process -- Cluster Interpretation (LightGBM) -- Checking if Anomaly Cluster exists")
         cluster_df, is_anomaly_exist = self.interpret_cluster(
             tuned_model=best_estimator
         )
@@ -710,7 +725,7 @@ class ClusterInterpretationService(BaseMLService):
         return output
 
 
-class MlProcessor(AbstractMLProcessor):
+class MLProcessor(AbstractMLProcessor):
     def __init__(
         self,
         df: pd.DataFrame,
@@ -730,20 +745,27 @@ class MlProcessor(AbstractMLProcessor):
 
     def process(self) -> dict:
         """Wrapper Orchestrate all processes and ml services"""
+        logging.info(f"ML Processor: {self.__str__}")
 
         # RFM / Customer Profiling
+        logging.info("ML Process -- Executing... Customer Profiling (RFM)")
         enriched_customer_profile: pd.DataFrame = CustomerProfilingService(df=self.df).process()
-        
+        logging.info("ML Process -- Success: Customer Profiling (RFM)")
+
         # Customer Segmentation
+        logging.info("ML Process -- Executing... Customer Segmentation (KMeans)")
         output_segmenter: dict = CustomerSegmentationService(df=enriched_customer_profile).process()
-        
+        logging.info("ML Process -- Success: Customer Segmentation (KMeans)")
+
         # Interpret Customer Cluster's Importance Features
+        logging.info("ML Process -- Executing... Cluster Interpretation (LightGBM)")
         interpret_service = ClusterInterpretationService(
             df=output_segmenter.get("output_df"), 
             interpreter=self.interpreter,
             force_train=self.force_train
         )
         output_interpreter: dict = interpret_service.process()
+        logging.info("ML Process -- Success: Cluster Interpretation (LightGBM)")
         
         # Re-arrange outputs
         outputs = {

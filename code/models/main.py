@@ -2,7 +2,7 @@ import argparse
 import logging
 
 from io_services import InputProcessor, OutputProcessor
-from ml_services import MlProcessor
+from ml_services import MLProcessor
 
 
 # set basic logging configuration
@@ -61,7 +61,7 @@ def entrypoint():
     # ml services
     logging.info(f"Main Process -- Executing... MlProcessor")
     
-    ml_processor = MlProcessor(
+    ml_processor = MLProcessor(
         df=df, 
         interpreter=interpreter,
         force_train=args.force_train

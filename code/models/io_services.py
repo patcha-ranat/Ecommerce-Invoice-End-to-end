@@ -304,7 +304,7 @@ class InputProcessor(BaseIOProcessor):
         }
 
     def process(self):
-        logging.info(f"Processor: {self.__str__}")
+        logging.info(f"Input Processor: {self.__str__}")
 
         reader_instance = self.factory.get(self.env)
         reader_args = {
@@ -555,7 +555,7 @@ class OutputProcessor(BaseIOProcessor):
         logging.info(f"Writer arguments: {output_log}")
 
     def process(self) -> None:
-        logging.info(f"Processor: {self.__str__}")
+        logging.info(f"Output Processor: {self.__str__}")
 
         writer_instance = self.factory.get(self.env)
         writer_args = {
