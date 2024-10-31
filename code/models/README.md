@@ -29,3 +29,25 @@ python main.py ...
 ```
 
 ## Usage
+- please, refer to [input_example.sh](./test/input_example.sh)
+```bash
+# Example for local execution
+python main.py --env local --method filesystem --input_path '../../data/ecomm_invoice_transaction.parquet' --output_path output --exec_date 2024-10-29
+```
+
+## Terraform
+- Prerequisite: `gcloud`
+- please refer to this [official documentation](https://cloud.google.com/docs/terraform/authentication) for official authentication approaches.
+```bash
+gcloud auth application-default login
+
+# impersonated account
+gcloud auth application-default login --impersonate-service-account <SERVICE_ACCT_EMAIL>
+
+cd terraform
+
+terraform init
+terraform plan
+terraform apply
+terraform destroy
+```
