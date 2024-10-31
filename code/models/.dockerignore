@@ -1,0 +1,6 @@
+# testing components
+output
+db/*db
+
+# code
+*.ipynb

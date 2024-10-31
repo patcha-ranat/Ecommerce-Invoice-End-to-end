@@ -3,7 +3,6 @@ from typing import Any
 from pathlib import Path
 import logging
 import json
-from datetime import datetime
 
 import pandas as pd
 import duckdb
