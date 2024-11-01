@@ -26,13 +26,13 @@ variable "bucket_region" {
     type = string
 }
 
-variable "bucket_dev_name" {
-    default = "kde_ecomm_dev"
+variable "bucket_landing_name" {
+    default = "kde_ecomm_landing"
     type = string
 }
 
-variable "bucket_stg_name" {
-    default = "kde_ecomm_stg"
+variable "bucket_staging_name" {
+    default = "kde_ecomm_staging"
     type = string
 }
 

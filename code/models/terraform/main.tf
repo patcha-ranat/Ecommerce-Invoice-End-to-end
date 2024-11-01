@@ -15,14 +15,14 @@ provider "google" {
 
 # Cloud Storage
 
-resource "google_storage_bucket" "bucket_dev" {
-    name          = var.bucket_dev_name
+resource "google_storage_bucket" "bucket_landing" {
+    name          = var.bucket_landing_name
     location      = var.bucket_region
     force_destroy = true
 }
 
-resource "google_storage_bucket" "bucket_stg" {
-    name          = var.bucket_stg_name
+resource "google_storage_bucket" "bucket_staging" {
+    name          = var.bucket_staging_name
     location      = var.bucket_region
     force_destroy = true
 }
