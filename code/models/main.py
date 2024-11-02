@@ -16,16 +16,19 @@ def entrypoint():
         "--env", type=str, help="", required=True
     )
     parser.add_argument(
+        "--project_id", type=str, help="", required=False
+    )
+    parser.add_argument(
         "--method", type=str, help="", required=True
     )
     parser.add_argument(
-        "--input_path", type=str, help="", required=True
-    )
-    parser.add_argument(
-        "--output_path", type=str, help="", required=True
-    )
-    parser.add_argument(
         "--exec_date", type=str, help="execution date in format 'YYYY-mm-dd'", required=True
+    )
+    parser.add_argument(
+        "--input_path", type=str, help="", required=True # required for filesystem
+    )
+    parser.add_argument(
+        "--output_path", type=str, help="", required=True # required for filesystem
     )
     parser.add_argument(
         "--force_train", action="store_true"
@@ -48,7 +51,9 @@ def entrypoint():
     
     input_processor = InputProcessor(
         env=args.env,
-        method=args.method, 
+        method=args.method,
+        project_id=args.project_id,
+        exec_date=args.exec_date,
         input_path=args.input_path,
         output_path=args.output_path
     )
@@ -76,8 +81,9 @@ def entrypoint():
     output_processor = OutputProcessor(
         env=args.env,
         method=args.method,
+        project_id=args.project_id,
         output_path=args.output_path,
-        date=args.exec_date,
+        exec_date=args.exec_date,
         outputs=outputs
     )
     output_processor.process()

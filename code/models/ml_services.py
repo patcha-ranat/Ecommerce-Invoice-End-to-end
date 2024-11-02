@@ -436,7 +436,7 @@ class ClusterInterpretationService(BaseMLService):
     @staticmethod
     def log_evaluation(y_true, y_pred, float_point: int = 4) -> dict:
         eval_metadata = {
-            "date": datetime.today().date().strftime("%Y-%m-%d"),
+            "exec_date": datetime.today().date().strftime("%Y-%m-%d"),
             "f1_score_macro": round(
                 f1_score(y_true=y_true, y_pred=y_pred, average="macro"), float_point
             ),
