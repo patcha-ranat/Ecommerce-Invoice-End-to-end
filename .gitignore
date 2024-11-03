@@ -41,3 +41,4 @@ pyenv
 *.duckdb
 output/artifact
 output/models
+_process.sh

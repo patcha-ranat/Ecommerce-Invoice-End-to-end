@@ -472,7 +472,9 @@ class GCPInputReader(BaseInputReader):
             )
             logging.info(f"Found the latest model as: {latest_mdoel}")
 
-            model_path = f"{model_path}/{latest_mdoel}"
+            # re-structure uri 
+            bucket_name = model_path.split("/")[2]
+            model_path = f"gs://{bucket_name}/{latest_mdoel}"
 
             # read model with pickle
             interpreter = self.read_model_blob(path=model_path)
@@ -835,7 +837,7 @@ class GCPOutputWriter(BaseOutputWriter):
             model_path=model_path, 
             model_name=model_name
         )
-        latest_version = latest_model.split("/")[-1].split("_v")[-1]
+        latest_version = latest_model.split("/")[-1].split("_v")[-1].split(".")[0]
 
         return int(latest_version)
 
