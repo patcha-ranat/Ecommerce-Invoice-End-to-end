@@ -18,7 +18,23 @@ class AbstractInputReader(ABC):
         pass
 
     @abstractmethod
-    def init_db(self):
+    def is_model_exist(self): 
+        pass
+
+    @abstractmethod
+    def list_model_in_path(self):
+        pass
+
+    @abstractmethod
+    def find_latest_model(self):
+        pass
+
+    @abstractmethod
+    def read_interpreter(self):
+        pass
+
+    @abstractmethod
+    def read_data(self):
         pass
 
     @abstractmethod

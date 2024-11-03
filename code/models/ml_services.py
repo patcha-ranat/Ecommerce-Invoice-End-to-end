@@ -350,8 +350,9 @@ class CustomerSegmentationService(BaseMLService):
                     tmp_slope_changes[min_slope_change_index] = 1
                     continue
                 return k_optimal
-            except Exception as e:
-                raise ValueError(e)
+            except Exception as err:
+                logging.exception(f"Unexpected {err}, {type(err)}")
+                raise
 
     def clustering(
         self, df: pd.DataFrame, scaled_df: pd.DataFrame, optimal_k: int
@@ -400,7 +401,7 @@ class ClusterInterpretationService(BaseMLService):
     -------
     - `process`: main process to orchestrate overall processes
         - `split_data`: split data for Interpreter training and evaluation
-        - ~~`is_retrain_required`: check if new customer profile is explainable by the old trained interpreter~~
+        - `is_retrain_required`: check if new customer profile is explainable by the old trained interpreter
         - `train_interpreter`: train a new interpreter
         - `eval_trained_interpreter`: retrieve model fro searcher and calculate model performance
             - `log_evaluation`: calculate metrics of the interpreter
@@ -617,11 +618,11 @@ class ClusterInterpretationService(BaseMLService):
 
         # identify anomaly cluster
         if len(post_mapped_cluster_factor) == len(mapped_cluster_factor):
-            logging.info("Anomaly cluster is not found")
+            logging.info("ML Process -- Cluster Interpretation (LightGBM) Anomaly cluster is not found")
             cluster_df["is_anomaly"] = False
             is_anomaly_exist = False
         else:
-            logging.warning("Anomaly cluster is found")
+            logging.warning("ML Process -- Cluster Interpretation (LightGBM) Anomaly cluster is found")
             all_cluster = set([cluster["cluster"] for cluster in mapped_cluster_factor])
             cluster_anomaly_removed = set(
                 [cluster["cluster"] for cluster in post_mapped_cluster_factor]
@@ -632,7 +633,7 @@ class ClusterInterpretationService(BaseMLService):
                 {"cluster": lambda x: True if x in anomaly_cluster else False}
             )
 
-            logging.info(f"Anomaly cluster: {anomaly_cluster}")
+            logging.info(f"ML Process -- Cluster Interpretation (LightGBM) -- Anomaly cluster: {anomaly_cluster}")
             is_anomaly_exist = True
 
         return cluster_df, is_anomaly_exist
