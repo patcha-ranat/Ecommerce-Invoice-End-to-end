@@ -21,6 +21,8 @@ variable "region" {
     type = string
 }
 
+# Google Cloud Storage
+
 variable "bucket_region" {
     default = "ASIA-SOUTHEAST1"
     type = string
@@ -41,6 +43,8 @@ variable "bucket_curated_name" {
     type = string
 }
 
+# BigQuery
+
 variable "dataset_id_silver" {
     default = "kde_ecomm_silver"
     type = string
@@ -48,5 +52,17 @@ variable "dataset_id_silver" {
 
 variable "dataset_id_gold" {
     default = "kde_ecomm_gold"
+    type = string
+}
+
+# Google Artifact Registry
+
+variable "gar_repo_id_dev" {
+    default = "kde-ecomm-dev"
+    type = string
+}
+
+variable "gar_repo_id_dev_desc" {
+    default = "DEV"
     type = string
 }

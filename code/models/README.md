@@ -73,5 +73,30 @@ rm ecomm_invoice_transaction.parquet
 
 
 # ./test/input_sample.sh
+# local - gcp
 python main.py --env gcp --project_id <project_id> --method filesystem --input_path 'gs://<landing_bucket_name>/input/data/2024-11-03/ecomm_invoice_transaction.parquet' --output_path 'gs://<staging_bucket_name>/output' --exec_date 2024-11-03
+
+
+docker build -t ecomm/interpretable-dynamic-rfm-service:v2 .
+
+# with python main.py as an entrypoint
+# docker - gcp
+docker run --rm \
+    -v $HOME/.config/gcloud:/root/.config/gcloud \
+    ecomm/interpretable-dynamic-rfm-service:v2 \
+    --env gcp \
+    --method filesystem \
+    --input_path 'gs://<landing_bucket_name>/input/data/2024-11-03/ecomm_invoice_transaction.parquet' \
+    --output_path 'gs://<staging_bucket_name>/output' \
+    --exec_date 2024-11-03
+```
+
+## GAR Manual Deployment
+```bash
+# workdir: code/models
+docker build -t <any-image-name> .
+
+docker tag <previous-image-name> $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest
+
+docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest
 ```

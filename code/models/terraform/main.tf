@@ -54,3 +54,12 @@ resource "google_bigquery_dataset" "dataset_gold" {
         env = var.env
     }
 }
+
+# Artifact Registry
+
+resource "google_artifact_registry_repository" "gar-dev" {
+    location      = var.region
+    repository_id = var.gar_repo_id_dev
+    description   = var.gar_repo_id_dev_desc
+    format        = "DOCKER"
+}
