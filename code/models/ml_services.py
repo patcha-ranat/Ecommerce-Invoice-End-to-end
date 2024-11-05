@@ -326,7 +326,7 @@ class CustomerSegmentationService(BaseMLService):
         """
         array_distortions = np.array(distortions)
         # 1st derivative: graph slope
-        slopes = np.divide(array_distortions[1:], array_distortions[:-1])
+        slopes = np.diff(array_distortions[1:], array_distortions[:-1])
         # 2nd derivative: rate of change
         slope_changes = np.diff(slopes)
 
