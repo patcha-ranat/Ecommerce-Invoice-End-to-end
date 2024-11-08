@@ -642,7 +642,7 @@ class LocalOutputWriter(BaseOutputWriter):
             output.to_parquet(data_path / data_file_name)
             
             # logs
-            logging.info(f"Successfully export data to {str(data_path)} output as {data_file_name}")
+            logging.info(f"Successfully export data to {str(data_path / data_file_name)}")
         
         elif element_type == "model":
             # prep path
@@ -670,7 +670,7 @@ class LocalOutputWriter(BaseOutputWriter):
                 f.close()
 
             # logs
-            logging.info(f"Successfully export model to {str(model_path)} output as {model_file_name}")
+            logging.info(f"Successfully export model to {str(model_path / model_file_name)}")
 
         elif element_type == "artifact":
             # aka control file as json
@@ -685,9 +685,15 @@ class LocalOutputWriter(BaseOutputWriter):
             with open(artifact_path / artifact_file_name, "+w") as f:
                 json.dump(output, f, indent=4)
                 f.close()
+            
+            # anomaly cluster flag
+            if output.get("is_anomaly_exist"):
+                with open(artifact_path / "ANOMALY_EXIST", "w") as f:
+                    f.close()
+                logging.info(f"Successfully export anomaly flag file (artifact) to {artifact_path / 'ANOMALY_EXIST'}")
 
             # logs
-            logging.info(f"Successfully export control file (artifact) to {str(artifact_path)} as {artifact_file_name}")
+            logging.info(f"Successfully export control file (artifact) to {str(artifact_path / artifact_file_name)}")
 
     def write(self, sql_path: str = None, sql_params: dict = None) -> None:
         if self.method == "db":
@@ -732,23 +738,16 @@ class LocalOutputWriter(BaseOutputWriter):
             self.write_element(output=segmenter_scaler, element_type="model", filename="segmenter_scaler")
             self.write_element(output=interpreter, element_type="model", filename="lgbm_interpreter")
 
-
             # other artifacts
             logging.info("Exporting... Artifact (Control file)")
 
-            interpreter_params = self.output.get("interpreter_params")
-            interpreter_metrics = self.output.get("interpreter_metrics")
-            is_train_interpreter = self.output.get("is_train_interpreter") # boolean
-            # latest_model_version = self.find_latest_model_version(model_path=) #TODO: solve this logic finding the latest trained model version
-            is_anomaly_exist = self.output.get("is_anomaly_exist") # boolean
-
             # aggregate artifact
             artifacts = {
-                "interpreter_params": interpreter_params,
-                "interpreter_metrics": interpreter_metrics,
-                "is_train_interpreter": is_train_interpreter,
-                # "latest_trained_model_version": latest_model_version,
-                "is_anomaly_exist": is_anomaly_exist
+                "interpreter_params": self.output.get("interpreter_params"),
+                "interpreter_metrics": self.output.get("interpreter_metrics"),
+                "is_train_interpreter": self.output.get("is_train_interpreter"), # boolean,
+                # "latest_trained_model_version": self.find_latest_model_version(model_path=), #TODO: solve this logic finding the latest trained model version
+                "is_anomaly_exist": self.output.get("is_anomaly_exist") # boolean
             }
             control_file_dict =  self.build_control_file_dict(artifacts=artifacts)
 
@@ -884,13 +883,15 @@ class GCPOutputWriter(BaseOutputWriter):
         if how == "pickle": # binary
             with blob.open("wb") as f:
                 pickle.dump(output, f)
+                f.close()
         elif how == "json":
             with blob.open("w") as f:
                 json.dump(output, f, indent=4)
+                f.close()
+        elif how == "none":
+            blob.upload_from_string("")
         else:
             raise Exception("'how' parameter is not valid.")
-        
-        f.close()
 
     def write_element(
         self, 
@@ -944,10 +945,19 @@ class GCPOutputWriter(BaseOutputWriter):
             # aka control file as json
             # prep filename and path
             artifact_file_name = f"{filename}.json"
+            artifact_flag_path = f"{self.output_path}/artifact/{self.exec_date}/ANOMALY_EXIST" 
             artifact_path = f"{self.output_path}/artifact/{self.exec_date}/{artifact_file_name}"
+
 
             # export
             self.write_blob(path=artifact_path, output=output, how="json")
+
+            # anomaly cluster flag
+            if output.get("is_anomaly_exist"):
+                self.write_blob(path=artifact_flag_path, output=None, how="none")
+
+                logging.info(f"Successfully export anomaly flag file (artifact) to {artifact_flag_path}")
+
 
             # logs
             logging.info(f"Successfully export control file (artifact) to {artifact_path}")
@@ -997,23 +1007,16 @@ class GCPOutputWriter(BaseOutputWriter):
             self.write_element(output=segmenter_scaler, element_type="model", filename="segmenter_scaler")
             self.write_element(output=interpreter, element_type="model", filename="lgbm_interpreter")
 
-
             # other artifacts
             logging.info("Exporting... Artifact (Control file)")
 
-            interpreter_params = self.output.get("interpreter_params")
-            interpreter_metrics = self.output.get("interpreter_metrics")
-            is_train_interpreter = self.output.get("is_train_interpreter") # boolean
-            # latest_model_version = self.find_latest_model_version(model_path=) #TODO: solve this logic finding the latest trained model version
-            is_anomaly_exist = self.output.get("is_anomaly_exist") # boolean
-
             # aggregate artifact
             artifacts = {
-                "interpreter_params": interpreter_params,
-                "interpreter_metrics": interpreter_metrics,
-                "is_train_interpreter": is_train_interpreter,
-                # "latest_trained_model_version": latest_model_version,
-                "is_anomaly_exist": is_anomaly_exist
+                "interpreter_params": self.output.get("interpreter_params"),
+                "interpreter_metrics": self.output.get("interpreter_metrics"),
+                "is_train_interpreter": self.output.get("is_train_interpreter"), # boolean,
+                # "latest_trained_model_version": self.find_latest_model_version(model_path=), #TODO: solve this logic finding the latest trained model version
+                "is_anomaly_exist": self.output.get("is_anomaly_exist") # boolean
             }
             control_file_dict =  self.build_control_file_dict(artifacts=artifacts)
 
