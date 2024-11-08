@@ -28,14 +28,14 @@
         "feature_fraction": 1
     },
     "interpreter_metrics": {
-        "exec_date": "2024-11-03",
-        "f1_score_macro": 0.9351,
-        "accuracy": 0.9982,
-        "precision": 0.9401,
-        "recall": 0.9306,
+        "exec_date": "2024-11-08",
+        "f1_score_macro": 0.7993,
+        "accuracy": 0.9984,
+        "precision": 0.8502,
+        "recall": 0.7706,
         "interpreter_model_version": null,
         "interpreter_train_date": null
     },
     "is_train_interpreter": false,
-    "is_anomaly_exist": false
+    "is_anomaly_exist": true
 }

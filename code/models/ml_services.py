@@ -324,35 +324,46 @@ class CustomerSegmentationService(BaseMLService):
         """
         Function to find the optimal k considered by distortions
         """
-        array_distortions = np.array(distortions)
         # 1st derivative: graph slope
-        slopes = np.diff(array_distortions[1:], array_distortions[:-1])
+        slopes = np.diff(distortions)
         # 2nd derivative: rate of change
-        slope_changes = np.diff(slopes)
+        rate_of_change_slopes = np.diff(slopes)
 
-        # tmp variables used in slope calculation in the next process
-        tmp_slopes = slopes.copy()
-        tmp_slope_changes = slope_changes.copy()
+        # logs
+        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Distortions: {distortions}")
+        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- slopes: {slopes}")
+        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- rate_of_change_slopes: {rate_of_change_slopes}")
 
         # find the most optimal k
         while True:
             try:
-                # find the lowest slope change (the most linear index)
-                min_slope_change_index = np.argmin(abs(tmp_slope_changes))
+                # Step 1: Use the rate of change of slopes to find the most significant elbow point
+                # The minimum second derivative indicates the "elbow" point.
+                elbow_idx = np.argmin(rate_of_change_slopes)
+                elbow_point_idx = elbow_idx + 1 # Adjust index for original `y`
 
-                # verifying if there's no lower slope after the most linear point
-                if (
-                    tmp_slope_changes[min_slope_change_index]
-                    < tmp_slopes[min_slope_change_index:]
-                ).all():
-                    k_optimal = min_slope_change_index + 2
+                # Step 2: Select optimal K based on the following logic:
+                # - If every single slope after elbow point is more than a slope before elbow point (this is best clustering)
+                #   OR every slope after elbow point is equal (can't further find the next elbow point)
+                #       then, optimal_k = this elbow point
+                # - Otherwise, (this is still not the best clustering) find the next minimum elbow point by
+                #   setting the current minimum change of slope to max and continue loop
+                
+                is_no_lower_slopes = np.array(slopes[elbow_point_idx:]) > slopes[elbow_point_idx]
+                is_equal_slopes = ~is_no_lower_slopes
+
+                if is_no_lower_slopes.all() or is_equal_slopes.all():
+                    optimal_k = elbow_point_idx
+                    break
                 else:
-                    tmp_slope_changes[min_slope_change_index] = 1
+                    rate_of_change_slopes[elbow_idx] = max(rate_of_change_slopes)
                     continue
-                return k_optimal
+
             except Exception as err:
                 logging.exception(f"Unexpected {err}, {type(err)}")
                 raise
+        
+        return optimal_k
 
     def clustering(
         self, df: pd.DataFrame, scaled_df: pd.DataFrame, optimal_k: int
