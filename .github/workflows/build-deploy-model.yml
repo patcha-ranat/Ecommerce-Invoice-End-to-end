@@ -1,4 +1,4 @@
-name: build-deploy-model-dev
+name: build-deploy-model
 
 on:
     workflow_dispatch:
