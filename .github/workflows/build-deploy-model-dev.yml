@@ -1,0 +1,39 @@
+name: build-deploy-model-dev
+
+on:
+    workflow_dispatch:
+        inputs:
+            imageVersion:
+                description: 'Image Version'
+                required: true
+            targetStageRepo:
+                description: 'Target Stage Repo'
+                required: true
+                default: 'dev'
+                type: choice
+                options:
+                - dev
+                - stg
+                - prod
+
+env:
+    IMAGE_NAME: ${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/kde-ecomm-${{ inputs.targetStageRepo }}/ecomm/interpretable-dynamic-rfm-service:v${{ inputs.imageVersion }}
+
+jobs:
+    build-deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Echo Build Detail
+              run: |
+                echo 'Branch Release: ${{ env.GITHUB_REF_NAME }}'
+                echo 'Image version: ${{ inputs.imageVersion }}'
+                echo 'Target Stage Repo: ${{ inputs.targetStageRepo }}'
+
+            - name: Docker Build Image
+              run: docker build -t ${{ env.IMAGE_NAME }} -f code/models/Dockerfile
+
+            - name: Docker Push Image
+              run: docker push ${{ env.IMAGE_NAME }}
