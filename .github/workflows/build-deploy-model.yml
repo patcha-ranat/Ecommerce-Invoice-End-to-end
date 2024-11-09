@@ -33,7 +33,7 @@ jobs:
                 echo 'Target Stage Repo: ${{ inputs.targetStageRepo }}'
 
             - name: Docker Build Image
-              run: docker build -t '${{ env.IMAGE_NAME }}' -f code/models/
+              run: docker build -t ${{ env.IMAGE_NAME }} code/models/
 
             - name: Docker Push Image
-              run: docker push '${{ env.IMAGE_NAME }}'
+              run: docker push ${{ env.IMAGE_NAME }}
