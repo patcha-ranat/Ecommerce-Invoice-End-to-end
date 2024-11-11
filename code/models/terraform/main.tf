@@ -8,7 +8,7 @@ terraform {
 }
 
 provider "google" {
-    # impersonate_service_account = var.service_account_email # use ADC for local development
+    impersonate_service_account = var.service_account_email
     project     = var.project_id
     region      = var.region
 }

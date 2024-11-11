@@ -42,7 +42,7 @@ gcloud auth application-default login
 gcloud config set project <project_id>
 
 # for impersonated account
-# gcloud auth application-default login --impersonate-service-account <SERVICE_ACCT_EMAIL>
+gcloud auth application-default login --impersonate-service-account <SERVICE_ACCT_EMAIL>
 ```
 
 ## Terraform
