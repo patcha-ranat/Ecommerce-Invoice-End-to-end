@@ -5,11 +5,14 @@ Click "⋮≡" at top right to show the table of contents.
 ```
 **End-to-end Data project** in the e-commerce and retail industries covering the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analytic skills, and how to automate ML lifecycle management (MLOps).
 
+***Disclaimer**: This documentation not only focused on outcomes, but also explained concepts and details for reproduction*
+
 ## **Context**
 
 It's crucial in nowadays to emphasize data existing and make the most use of it. **The project was created to practice and demonstrate the full process of data exploitation** covering setting up environments, ETL process, Web Scraping, Data Visualization, Machine Learning Model Development, and Model Deployment using E-commerce data.
 
 ## **Table of Contents**:
+*(latest revised: July 2023, Aug 2023, Oct 2024, Nov 2024)*
 1. [Setting up Environment](#1-setting-up-environment)
     - 1.1 [Setting up Overall Services (containers)](#11-setting-up-overall-services-containers)
 2. [ETL (Extract, Transform, Load): Writing DAGs and Managing Cloud Services](#2-etl-process-writing-dags-and-managing-cloud-services)
@@ -22,13 +25,13 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
         - [Terraform for AWS](#terraform-for-aws)
     - 2.5 [Detail of the ETL Code](#25-detail-of-the-etl-code)
     - 2.6 [**Airflow DAGs and Data warehouse in Production**](#26-airflow-dags-and-data-warehouse-in-production)
-    - 2.7 [Terraform for Production, and the Best Practices](#27-terraform-for-production-and-the-best-practices)
 <!-- 3. [Web Scraping](#3-web-scraping) -->
 3. Web Scraping
 4. [EDA and Data Visualization](#4-eda-and-data-visualization)
     - 4.1 [EDA](#41-eda)
     - 4.2 [PowerBI Dashboard](#42-powerbi-dashboard)
-    - 4.3 [**Data Modeling and Dashboard Development in Production**](#43-data-modeling-and-dashboard-development-in-production)
+    - 4.3 [**Data Modeling and Optimization in Production**](#43-data-modeling-and-optimization-in-production)
+        - [How to Optimize Data Models](#how-to-optimize-data-models)
 5. [Machine Learning Model Development](#5-machine-learning-model-development)
     - 5.1 [Customer Segmentation By RFM, KMeans, and Tree-based Model](#51-customer-segmentation-by-rfm-kmeans-and-tree-based-model)
     - 5.2 [Market Basket Analysis](#52-market-basket-analysis)
@@ -345,6 +348,7 @@ The [`main.tf`](./terraform/main.tf) file, using some variables from [`variables
 To use terraform, you need to install Terraform in your local machine (+add to PATH), and have your google credentials (service account credentials) as a json file within `credentials` directory located in the same level of your root working directory. Then, you can run terraform commands in your terminal **in your terraform working directory**.
 
 ```bash
+# workdir: terraform/
 terraform init
 
 terraform plan
@@ -596,65 +600,6 @@ I intentionally separate the code for AWS and GCP, so we can easily find between
         - Many companies discourage the use of these tools giving the reason that it's not appropriate for big scale projects and too messy to maintain. However, I disagree this because there're practices and principles that solve this problem, like ***Data Mesh*** *(twisted from Domain-driven design: DDD)* and ***Modularity***. 
         - Anyway, it requires highly skilled data archietct and data engineer to develop and maintain these tools along with the priciples. So, they might not be able to focus this enough since it can be quite a low-level foundation and very far from a product that's seemed to be more profitable to the company.
 
-### 2.7 Terraform for Production, and the Best Practices
-- Personally, I think this is the most important to think of when using Terraform. Credential and secret management is highly important for real use cases to avoid leaking any sensitive information to public no matter how much the project scale is. There's multiple ways to do this that are proper to different use cases.
-    1. Use a credential file
-        - In this project, I used credential file storing in local machine which is easy to manage by a developer. So, it's not appropriate in production.
-    2. Use Secret manager
-        - By doing this, you have to manually create the credential first, and store it in secret manager on cloud services. So, you can use it as a resource later in the code authorized by your cloud cli such as `gcloud`, `aws`, and `az`
-        - **This is mentioned as the most commonly used in production,** but there's some drawback to concern.
-    3. Use Environment variables
-        - This approaches is suit for a project that's not involved by many developers, because it have to manually setup `.env` files to store sensitive information. However, It's still also risk to be leaked if any developer forget to hide the file by `.gitignore` and push to version control tools.
-        ```shell
-        export TF_VAR_google_cred=<gcp_credential_content>
-        export TF_VAR_gcp_region=<cloud_region>
-        export TF_VAR_db_username=<username_value>
-        export TF_VAR_db_password=<password_value>
-        ```
-        ```shell
-        # variable.tf
-
-        variable "gcp_cred" {}
-        variable "gcp_region" {}
-
-        variable "db_username" {
-            type = string
-        }
-        variable "db_password" {
-            type = string
-        }
-        ```
-        ```shell
-        # main.tf
-        provider "google" {
-            credentials = var.gcp_cred
-            region      = var.gcp_region
-        }
-        ```
-        - using `terraform.tfvars` to parse sensitive information during runtime is not different from this method, but in just different behavior, because you have to hide in from version control anyway.
-    4. Encrypt files with KMS (Key Management Service)
-        - **This is mentioned as the most commonly used in production.**
-    5. Masking sensitive
-        - In multiple previous approaches, Terraform sometimes know whether it's sensitive information and automatically secure it shown as `(known after apply)`.
-        - But sometimes it don't, we should explicitly mask it "sensitive", and it will be shown as `(sensitive value)`
-        ```shell
-        variable "aws_access_key" {
-            sensitive = true
-        }
-            variable "aws_secret_key" {
-            sensitive = true
-        }
-        output "accesskey_value" {
-            value = var.aws_access_key
-            sensitive = true
-        }
-        output "secret_value" {
-            value = var.aws_secret_key
-            sensitive = true
-        }
-        ```
-- Storing tf state online securely considered as very important aspect if you decide to use some of pattern above, since Terraform can unintentionally expose your secrets in the state file.
-
 ## 3. Web Scraping
 
 This part is not currently in development. I will update the progress later. But, you can check the concept and the old written code in [web-scraping](https://github.com/Patcharanat/ecommerce-invoice/tree/master/web-scraping) folder.
@@ -736,8 +681,22 @@ A little note for future myself:
 - **It's crucial to know who are the audiences of the dashboard, and what the objective of the dashboard is**. So, we can select the right metrics, right data, and right visualization.
 - **Data model is very important**, it's the foundation of the dashboard. If the data model is incorrected, the dashboard will be wrong also. If the data model come in a good shape, the dashboard will be easier to create, and the data will be easier to analyze. (especially in aspect of **Time Intelligence**)
 
-### 4.3 Data Modeling and Dashboard Development in Production
-- This topic is quite important and partially involved in data engineering processes.
+### 4.3 Data Modeling and Optimization in Production
+This topic is quite important and partially related with data engineering processes, since it can be highly involved in cost optimization.
+- Although *ingestion* process is completed, we might need to transformed it, besides of raw cleaned and normalized data, with custom business logic, and tables aggregation to further analyze and exploit more from data.
+- This process usually referred to *ELT* or *transformation* that is not the same *transformation* in ingestion process, which is just controling data quality by casting type, formatting date/timestamp or mapping data into specified schema by a framework.
+- Transformed data models can be located in *curate* or *gold* layer in *medallion architecture*, but sometimes can be in *semantic layer* which is referred to another transformation sub-layer before being shown on dashboard. However, this depends on companies' data archietcture and agreement between teams.
+![semantic-concept](./src/Picture/semantic-concept.jpg)
+- Transformation process can be done with SQL by analytic engineer, data analyst, domain expert, and etc. to make data become more meaningful to business aspect. However without proper expertise in SQL and data modeling, cost from dashboard usage and data preparation can be gone in a very wrong way.
+- Tools that support transformation at aggregation level is emerging, since ELT pattern is still counted as modern at the moment for batch data engineering pipeline. Some of famous tools you might have heard could be *dbt*, and *SQLMesh* which enable ability to perform complex incremental data loading logic, SCD handling, data lineage, data dict, and built-in data quality controlling at high level. However, you could still implement data aggregation with native airflow operator introduced by official provider by executing sql directly to data warehouse through Airflow.
+
+#### How to Optimize Data Models
+- What should be considered in gold layer (or curated) is technical aspects such as, SCD (Slow Changing Dimension), snapshot and incremental transformation (which usually involved with how ingestion pipelines work and silver layer partitioning), data transferring behavior or load type (transaction, full dump master or delta), and business logic (if semantic layer not exists or it required pre-calculation in gold layer)
+- **Pre-calculated table was proved to be more optimized when data is queried to dashboard. Moreover, data aggregation with only necessary partitioning considered also important in cost optimization when it come to larger scale in production database.**
+- Using view not only prevent downstream users from modifying table in ideal, but also manipulate the users to query from only specific period of data or partition resulting in lesser data scanning per read or per dashboard refresh.
+    - Using view can futher lead to *data governance* issues such as user permission to read from both table and view if not considering dashboard permission. 
+- Modeling data warehouse to *star schema* or *snowflake schema* (considered to be fact/dimension pattern) is claimed multiple times to be more cost optimized, but it lack of quantitative evidence.
+
 
 ## 5. Machine Learning Model Development
 
@@ -759,13 +718,13 @@ You can see the code in [**model_dev.ipynb**](model_dev.ipynb)
 
 **RFM (Recency, Frequency, Monetary)** is a well known method to segment customers based on their behavior. **But recency, fequency, and monetary alone, are not effective enough to segment the diversity of customers**. We should use other available features or characteristics of customers to segment them more effectively that come to the harder to score with traditional RFM method.
 
-As a result, **KMeans emerged as a crucial machine learning technique for effectively clustering clients** into more precise customer segments. **But, the Kmeans is not interpretable**, we can't explain the result or criteria to the business that how clusters are formed or how the customers are segmented, but only show what features we use in KMeans model (we don't even know which features are more influence).
+As a result, **KMeans emerged as a crucial machine learning technique for reasonably effectively clustering clients** into more precise customer segments. **But, the Kmeans is not interpretable**, we can't explain the result or criteria to the business of how clusters are formed or how the customers are segmented, but only show what features we use in KMeans model (we don't even know which features are more influence).
 
 **So, we can use Decision Tree to find the criteria of the clusters**, and explain the result to the business, leading to proper campaigns and strategies that suit to customer segments to be launched.
 
 Moreover, we can use **XGBoost to find the most important features that influence the customer segments (or each segment)**, and further concern and develop strategies regarding that features.
 
-**RFM and Features Details**
+#### **RFM and Features Details**
 
 First, we will form the RFM table based on customer transactions and add some more features (Feature Engineering) that we think it might be useful for segmentation which include:
 - Recency
@@ -784,9 +743,9 @@ Eventually, we will get a new table that represents customers profile and their 
 
 *Note: The features we used to decribe the customer behavior is not limited to the features above, we can add more features that we think it might be useful for segmentation, but also should be interpretable for initiaing the campaigns and strategies, so some features, like standard deviation, might not be appropriate for this case.*
 
-**KMeans**
+#### **KMeans**
 
-Before we put the customer profile data into KMeans, we should scale the data first , in my case I used **Robust Scaler**, to make the data have the same scale, since KMeans algorithm use distance to calculate the clusters, so it's sensitive to the different scale of the data.
+Before we put the customer profile data into KMeans, we should scale the data first , in my case I used **Robust Scaler**, to make the data have the same scale, since KMeans algorithm use euclidean distance to calculate the clusters, so it could sensitive to the different scale of the data.
 
 Then, we will use KMeans to segment customers into clusters. We will use **Elbow Method** and **Silhouette Plot** to find the optimal number of clusters which eventually is 10 clusters.
 
@@ -800,7 +759,7 @@ References:
 - [Selecting the number of clusters with silhouette analysis on KMeans clustering](https://scikit-learn.org/stable/auto_examples/cluster/plot_kmeans_silhouette_analysis.html)
 - [Segmenting Customers using K-Means, RFM and Transaction Records](https://towardsdatascience.com/segmenting-customers-using-k-means-and-transaction-records-76f4055d856a)
 
-**Decision Tree**
+#### **Decision Tree**
 
 After that, we will use **Decision Tree** to find the criteria of the clusters to make the clustering result from KMeans become interpretable. I used **Random Search** with **Cross Validation** to find the best hyperparameters of the Decision Tree to make it the most accurate **resulting in accuracy 91.41% on test set, 94.11% on train set, macro averaged of F1 score 0.75, to clarify criteria of each cluster.**
 
@@ -808,11 +767,11 @@ After that, we will use **Decision Tree** to find the criteria of the clusters t
 
 ***Note: The 91% accuracy doesn't mean we segmented the customers correctly by 91%**, because we can't be sure that Kmeans correctly 100% segmented the customers (and definitely, it didn't), but we can tell that the Decision Tree can explain the criteria of the clusters correctly by 91% in generalization, So we can take account of the criteria from the Decision Tree to cluster customer segmented to follow Kmeans result.*
 
-**XGBoost**
+#### **XGBoost**
 
-Finally, we will use **XGBoost** to find the most important features that influence the customer segments or important factors to develop the strategies. I also used **Random Search** with **Cross Validation** to find the best hyperparameters of XGBoost resulting in accuracy 97.76% on test set, 100% on train set, macro averaged of F1 score 0.77, to find the most important features (seem overfitting, but it's not a main focused).
+Finally, we will use **XGBoost** to find the most important features that influence the customer segments or important factors to develop the strategies. I also used **Random Search** with **Cross Validation** to find the best hyperparameters of XGBoost resulting in accuracy 97.76% on test set, 100% on train set, macro averaged of F1 score 0.77, to find the most important features (seems overfitting, but it's not a main focused).
 
-You may heard of feature importance from XGBoost that can describe which features are more influence to the model, but it's not effective enough due to its limitation, like how it treats the correlated features, how differently treats the categorical features and numerical features, and how it's not generalized to other models. So, I used **Permutation Feature Importance** instead, which is more generalized for choosing the most influence features to each cluster. Moreover, it can be used with any model, not just XGBoost.
+You may heard of feature importance from XGBoost that can describe which features are more influence to the model, but it's not effective enough due to its limitation, like how it treats the correlated features, how differently treats the categorical features and numerical features, and how it's not generalized to other models. So, I used **Permutation Feature Importance** instead, which is more interpretable and generalized for choosing the most influence features to each cluster. Moreover, it can be used with any model, not just XGBoost.
 
 References:
 - [Permutation feature importance - sklearn](https://scikit-learn.org/stable/modules/permutation_importance.html#permutation-importance)
@@ -833,6 +792,7 @@ Finally we can classify the customers into 10 clusters and explain the criteria 
 ... and so on.
 
 *Note: the more cluster and the more depth you have, the more complex and specific the criteria of each cluster will be, leading to harder to classify.*
+
 ### 5.2 Market Basket Analysis
 
 The Market Basket Analysis is a technique to find the association between items that customers purchase together. It can be used to find the relationship between items, and use the result to develop strategies such as cross-selling, and product bundling.
@@ -892,11 +852,11 @@ References:
 
 In this section, we will use **Time Series Forecasting** technique to predict future values based on the past values of the data. we will use some input from the past as features to predict the future sales.
 
-In general, we use current features or features that already happened fed into the model to predict the sales as a target. But, the problem is, if we want to predict the sales of the next month, we don't have the records of the next month yet. So, we have to use the records of the past to predict the sales of the next month.
+In general, we use current features or features that already happened fed into the model to predict the sales as a target. But, the problem is, if we want to predict the sales of the next month, we don't have the input of the next month yet. So, we have to use the records of the past to predict the sales of the next month.
 
 Therefore, we have to perform feature engineering, transform data, create features to obtain the appropriate and effective features to predict the future sales. So, we will use **Lag Features** and **Rolling Window Statistics**.
 
-But how can we know how lag of the features and how many rolling window statistics should we use? first we can use **Auto-correlation** to find the optimal lag value or candidates to be used as lag features. Then, we can use **Cross-Validation** to find the optimal number of rolling window and the best candidate of lag features.
+But how can we know how much lag of the features and how many rolling window statistics should we use? first we can use **Auto-correlation** to find the optimal lag value or candidates to be used as lag features. Then, we can use **Cross-Validation** to find the optimal number of rolling window and the best candidate of lag features.
 
 <img src="./src/Picture/autocorrelation.png">
 
@@ -906,9 +866,9 @@ Additionally, I used **Fast Fourier Transform** to find seasonality of the data,
 
 Personally, I thought using fast fourier transform to find seasonality is quite more quantitative than using autocorrelation. But, we can use both of them to find the seasonality of the data to ensure the result.
 
-![](./src/Picture/predict-demand.png)
+![predict-demand](./src/Picture/predict-demand.png)
 
-I think the most challenging part of timeseries forecasting is to find the appropriate features to predict the future sales. The features that we use to predict the future sales should be the features that already happened in the past, and we can't use the features that will happen in the future. So, checking how much lagged values of the features can be significant to predict the future sales is very important.
+I think the most challenging part of timeseries forecasting is to find the appropriate features to predict the future sales. The features that we use to predict the future sales should be the features that already happened in the past, and we can't use the features that will happen in the future. So, checking how much lagged values of the features can be significant to predict the future sales.
 
 Model | RMSE | MAPE
 :---: | :---: | :---:
@@ -931,24 +891,21 @@ References:
 
 ### 5.4 Recommendation System
 
-*in development . . .*
+*Not started . . .*
 
 ### 5.5 Customer Churn Prediction
 
-*In development . . .*
+*Not started . . .*
 
 ### 5.6 Price Analysis and Optimization
 
-*In development . . .*
+*Not started . . .*
 
 ## 6. Model Deployment and Monitoring
 
 After we developed and evaluated the model, we can deploy the model to production to leverage the business, bringing the model out from the Python notebook or your lab, and not only making it available to the data scientist.
 
-We can deploy the model to production in many approaches, such as:
-- **Batch Inference**: the model is deployed to production as a batch process, the model is run periodically to predict the target variable, the result is stored in the database, and the business can use the result to leverage the business.
-- **Real-Time Inference**: the model is deployed to production as a real-time process.
-- **Model as a Service**: the model is deployed to production as a web service utilizing APIs, the model is run only when the business needs to predict the target variable, and the business can use the result to leverage the business or use the API to integrate with other applications.
+We can deploy the model to production in many approaches, please refer to this repo: [MLOps - ML System](https://github.com/patcha-ranat/MLOps-ml-system) for further principle and research on mlops. However, most approaches required *docker container* for consistent runtime even in different environments, so I will elaborate more on containerization for this topic.
 
 In this project, we will deploy the model to the cloud environment **(GCP)**. The model will be deployed as a web service using **FastAPI** as a web framework for building RESTful APIs, and **Docker** as a containerization platform to make the model portable and scalable.
 
