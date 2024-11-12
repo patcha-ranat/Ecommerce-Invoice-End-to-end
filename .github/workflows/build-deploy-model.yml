@@ -28,9 +28,22 @@ jobs:
 
             - name: Echo Build Detail
               run: |
-                echo 'Branch Release: ${{ env.GITHUB_REF_NAME }}'
+                echo 'Branch Release: ${GITHUB_REF_NAME}'
                 echo 'Image version: ${{ inputs.imageVersion }}'
                 echo 'Target Stage Repo: ${{ inputs.targetStageRepo }}'
+
+            - name: Install Dependencies (Setup Cloud SDK)
+              uses: 'google-github-actions/setup-gcloud@v2'
+              with:
+                version: '500.0.0'
+
+            - name:  Authenticate GCP - Workload Identity Federation
+              uses: 'google-github-actions/auth@v2'
+              #  run: gcloud auth configure-docker ${{ secrets.REGION }}-docker.pkg.devd
+              with:
+                project_id: ${{ secrets.PROJECT_ID }}
+                workload_identity_provider: ${{ secrets.WIF_PROVIDER_URL }}
+                service_account: ${{ secrets.SERVICE_ACCOUNT }}
 
             - name: Docker Build Image
               run: docker build -t ${{ env.IMAGE_NAME }} code/models/
