@@ -52,21 +52,15 @@ variable "attribute_mapping" {
     type = map(any)
     default = {
         "google.subject"                = "assertion.sub"
-        "attribute.actor"               = "assertion.actor"
         "attribute.aud"                 = "assertion.aud"
-        "attribute.repository"          = "assertion.repository"
         "attribute.repository_owner"    = "assertion.repository_owner"
-        "attribute.event_name"          = "assertion.event_name"
     }
 }
 
 variable "attribute_condition" {
     type = string
     default = <<EOT
-        assertion.actor == "patcha-ranat" &&
-        assertion.repository == "patcha-ranat/Ecommerce-Invoice-End-to-end" &&
-        assertion.repository_owner == "patcha-ranat" &&
-        assertion.event_name == "workflow_dispatch"
+        assertion.repository_owner == "patcha-ranat"
     EOT
 }
 
