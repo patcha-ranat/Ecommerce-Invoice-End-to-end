@@ -22,13 +22,18 @@ env:
 jobs:
     build-deploy:
         runs-on: ubuntu-latest
+
+        permissions: # gcp auth required
+            contents: 'read'
+            id-token: 'write'
+
         steps:
-            - name: Checkout
+            - name: Checkout # prerequisite
               uses: actions/checkout@v4
 
             - name: Echo Build Detail
               run: |
-                echo 'Branch Release: ${GITHUB_REF_NAME}'
+                echo 'Branch Release: $GITHUB_REF_NAME'
                 echo 'Image version: ${{ inputs.imageVersion }}'
                 echo 'Target Stage Repo: ${{ inputs.targetStageRepo }}'
 
