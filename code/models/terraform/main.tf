@@ -38,7 +38,7 @@ resource "google_storage_bucket" "bucket_curated" {
 resource "google_bigquery_dataset" "dataset_silver" {
     dataset_id                  = var.dataset_id_silver
     location                    = var.region
-    delete_contents_on_destroy = true
+    delete_contents_on_destroy  = true
 
     labels = {
         env = var.env
@@ -48,7 +48,7 @@ resource "google_bigquery_dataset" "dataset_silver" {
 resource "google_bigquery_dataset" "dataset_gold" {
     dataset_id                  = var.dataset_id_gold
     location                    = var.region
-    delete_contents_on_destroy = true
+    delete_contents_on_destroy  = true
 
     labels = {
         env = var.env
