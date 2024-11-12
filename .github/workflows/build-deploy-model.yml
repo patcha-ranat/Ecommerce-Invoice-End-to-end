@@ -51,7 +51,7 @@ jobs:
 
             - name: Configure Docker Client of gcloud
               run: |
-                gcloud auth configure-docker ${{ secrets.REGION }}-docker.pkg.devd
+                gcloud auth configure-docker ${{ secrets.REGION }}-docker.pkg.dev
 
             - name: Docker Build Image
               run: docker build -t ${{ env.IMAGE_NAME }} code/models/
