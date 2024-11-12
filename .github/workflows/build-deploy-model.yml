@@ -33,7 +33,7 @@ jobs:
 
             - name: Echo Build Detail
               run: |
-                echo 'Branch Release: $GITHUB_REF_NAME'
+                echo 'Branch Release: ${{ github.ref_name }}'
                 echo 'Image version: ${{ inputs.imageVersion }}'
                 echo 'Target Stage Repo: ${{ inputs.targetStageRepo }}'
 
@@ -44,11 +44,14 @@ jobs:
 
             - name:  Authenticate GCP - Workload Identity Federation
               uses: 'google-github-actions/auth@v2'
-              #  run: gcloud auth configure-docker ${{ secrets.REGION }}-docker.pkg.devd
               with:
                 project_id: ${{ secrets.PROJECT_ID }}
                 workload_identity_provider: ${{ secrets.WIF_PROVIDER_URL }}
                 service_account: ${{ secrets.SERVICE_ACCOUNT }}
+
+            - name: Configure Docker Client of gcloud
+              run: |
+                gcloud auth configure-docker ${{ secrets.REGION }}-docker.pkg.devd
 
             - name: Docker Build Image
               run: docker build -t ${{ env.IMAGE_NAME }} code/models/

@@ -64,7 +64,6 @@ variable "attribute_condition" {
     type = string
     default = <<EOT
         assertion.actor == "patcha-ranat" &&
-        assertion.aud == "https://github.com/patcha-ranat" &&
         assertion.repository == "patcha-ranat/Ecommerce-Invoice-End-to-end" &&
         assertion.repository_owner == "patcha-ranat" &&
         assertion.event_name == "workflow_dispatch"
