@@ -686,11 +686,11 @@ class LocalOutputWriter(BaseOutputWriter):
                 json.dump(output, f, indent=4)
                 f.close()
             
-            # anomaly cluster flag
-            if output.get("is_anomaly_exist"):
-                with open(artifact_path / "ANOMALY_EXIST", "w") as f:
-                    f.close()
-                logging.info(f"Successfully export anomaly flag file (artifact) to {artifact_path / 'ANOMALY_EXIST'}")
+            # anomaly cluster flag (revert)
+            # if output.get("is_anomaly_exist"):
+            #     with open(artifact_path / "ANOMALY_EXIST", "w") as f:
+            #         f.close()
+            #     logging.info(f"Successfully export anomaly flag file (artifact) to {artifact_path / 'ANOMALY_EXIST'}")
 
             # logs
             logging.info(f"Successfully export control file (artifact) to {str(artifact_path / artifact_file_name)}")
@@ -953,10 +953,10 @@ class GCPOutputWriter(BaseOutputWriter):
             self.write_blob(path=artifact_path, output=output, how="json")
 
             # anomaly cluster flag
-            if output.get("is_anomaly_exist"):
-                self.write_blob(path=artifact_flag_path, output=None, how="none")
+            # if output.get("is_anomaly_exist"):
+            #     self.write_blob(path=artifact_flag_path, output=None, how="none")
 
-                logging.info(f"Successfully export anomaly flag file (artifact) to {artifact_flag_path}")
+            #     logging.info(f"Successfully export anomaly flag file (artifact) to {artifact_flag_path}")
 
 
             # logs

@@ -319,51 +319,96 @@ class CustomerSegmentationService(BaseMLService):
             distortions.append(kmeans.inertia_)
 
         return distortions
-
-    def find_best_elbow(self, distortions: list) -> int:
-        """
-        Function to find the optimal k considered by distortions
-        """
-        # 1st derivative: graph slope
-        slopes = np.diff(distortions)
-        # 2nd derivative: rate of change
-        rate_of_change_slopes = np.diff(slopes)
-
-        # logs
-        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Distortions: {distortions}")
-        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- slopes: {slopes}")
-        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- rate_of_change_slopes: {rate_of_change_slopes}")
-
-        # find the most optimal k
-        while True:
-            try:
-                # Step 1: Use the rate of change of slopes to find the most significant elbow point
-                # The minimum second derivative indicates the "elbow" point.
-                elbow_idx = np.argmin(rate_of_change_slopes)
-                elbow_point_idx = elbow_idx + 1 # Adjust index for original `y`
-
-                # Step 2: Select optimal K based on the following logic:
-                # - If every single slope after elbow point is more than a slope before elbow point (this is best clustering)
-                #   OR every slope after elbow point is equal (can't further find the next elbow point)
-                #       then, optimal_k = this elbow point
-                # - Otherwise, (this is still not the best clustering) find the next minimum elbow point by
-                #   setting the current minimum change of slope to max and continue loop
-                
-                is_no_lower_slopes = np.array(slopes[elbow_point_idx:]) > slopes[elbow_point_idx]
-                is_equal_slopes = ~is_no_lower_slopes
-
-                if is_no_lower_slopes.all() or is_equal_slopes.all():
-                    optimal_k = elbow_point_idx
-                    break
-                else:
-                    rate_of_change_slopes[elbow_idx] = max(rate_of_change_slopes)
-                    continue
-
-            except Exception as err:
-                logging.exception(f"Unexpected {err}, {type(err)}")
-                raise
+    
+    def find_optimal_k(self, distortions: list, slopes_change_threshold_percentage: int | float = 5) -> int:
+        # slopes: 1st derivative
+        slopes: np.NDArray = np.diff(distortions)
         
+        # rate of change of slopes (rcs): 2nd derivative
+        rcs: np.NDArray = np.diff(slopes)
+
+        # 2nd derivative proportion for comparison slopes change
+        first_rcs: int | float = rcs[0]
+        proportion_rcs: np.NDArray = np.divide(rcs, first_rcs)
+
+        # logs inputs
+        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Distortions: {distortions}")
+        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Slopes: {slopes}")
+        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Rate of Change of Slopes (rcs): {rcs}")
+        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- proportion_rcs: {proportion_rcs}")
+
+        try:
+            # check np.nan and np.inf
+            nan_checker: np.float64 = np.sum(proportion_rcs)
+            is_nan_exist: bool = np.isnan(nan_checker)
+            logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- NaN exists: {is_nan_exist}")
+
+            # check linear
+            if len(set(rcs)) == 1:
+                optimal_k = len(distortions)
+                logging.warning(f"Optimal k value not converges, please increase k value cross-validation. Maximum k value returned: {optimal_k}")
+            else:
+                if (np.inf not in proportion_rcs) and (~is_nan_exist):
+                    # use 2nd derivative to find elbow
+                    logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Using 2nd derivative method")
+                    for i, e in enumerate(proportion_rcs):
+                        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- proportion_rcs: {proportion_rcs[i:]}")
+                        if (np.array(proportion_rcs[i:])*100 <= slopes_change_threshold_percentage).all():
+                            optimal_k = i+1 # adjust index to original x value (y order)
+                            break
+                        else:
+                            optimal_k = 0
+                            continue
+                else:
+                    # use 1st derivative to find elbow
+                    logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Using 1st derivative method")
+                    first_slopes: int | float = slopes[0]
+                    proportion_slopes: np.NDArray = np.divide(slopes, first_slopes)
+
+                    for i, e in enumerate(proportion_slopes):
+                        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- proportion_rcs: {proportion_rcs[i:]}")
+                        if (np.array(proportion_slopes[i:])*100 <= slopes_change_threshold_percentage).all():
+                            optimal_k = i+1 # adjust index to original x value (y order)
+                            break
+                        else:
+                            optimal_k = 0
+                            continue
+
+                if optimal_k == 0:
+                # use most linear point to find elbow
+                    logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Using Most Linear Point method")
+                    while True:
+                        # Step 1: Use the rate of change of slopes to find the most significant elbow point
+                        # The minimum second derivative indicates the most linear point.
+                        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- current rcs: {rcs}")
+                        elbow_idx = np.argmin(rcs)
+                        elbow_point_idx = elbow_idx + 1 # adjust index to original x value (y order)
+
+                        # Step 2: Select optimal K based on the following logic:
+                        # - If any single slope after linear point is more than a slope before the linear point (this is best clustering)
+                        #   OR every slope after the linear point is equal (can't further find the next linear point)
+                        #       then, optimal_k = this linear point -1
+                        # - Otherwise, (still not the best clustering) find the next linear point by
+                        #   setting the current minimum rcs to max and continue loop
+                        
+                        is_no_lower_slopes = np.array(slopes[elbow_point_idx:]) > slopes[elbow_point_idx]
+                        is_equal_slopes = ~is_no_lower_slopes
+
+                        if is_no_lower_slopes.all() or is_equal_slopes.all():
+                            optimal_k = elbow_point_idx
+                            break
+                        else:
+                            rcs[elbow_idx] = max(rcs)
+                            continue
+
+        except Exception as e:
+            logging.exception(f"Unexpected {e}, {type(e)}")
+            raise
+
+        logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Optimal K Value: {optimal_k}")
+
         return optimal_k
+
 
     def clustering(
         self, df: pd.DataFrame, scaled_df: pd.DataFrame, optimal_k: int
@@ -387,7 +432,7 @@ class CustomerSegmentationService(BaseMLService):
 
         logging.info("ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K Value")
         distortions = self.train(df=scaled_df)
-        optimal_k = self.find_best_elbow(distortions=distortions)
+        optimal_k = self.find_optimal_k(distortions=distortions)
         logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Found optimal K Value: {optimal_k}")
 
         logging.info("ML Process -- Customer Segmentation (KMeans) -- Clustering Input")
