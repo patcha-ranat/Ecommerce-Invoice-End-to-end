@@ -42,3 +42,6 @@ pyenv
 output/artifact
 output/models
 _process.sh
+
+# etc
+*.pdf

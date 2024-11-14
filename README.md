@@ -42,12 +42,11 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
     <!-- - 5.4 [Recommendation System](#54-recommendation-system) -->
     <!-- - 5.5 [Customer Churn Prediction](#55-customer-churn-prediction) -->
     <!-- - 5.6 [Price Analysis and Optimization](#56-price-analysis-and-optimization) -->
-6. [Model Deployment and Monitoring](#6-model-deployment-and-monitoring)
-    - 6.1 [Exporting the Models](#61-exporting-the-models)
-    - 6.2 [Designing and Creating an API Web Service](#62-designing-and-creating-an-api-web-service)
-    - 6.3 [Docker Containerization](#63-docker-containerization)
-    - 6.4 [Deploying the Model to the Cloud Environment](#64-deploying-the-model-to-the-cloud-environment)
-    - 6.3 [*(Optional)* Automating the Deployment Process](#65-automating-the-deployment-process-optional)
+6. [ML Code Productionization and Deployment](#6-ml-code-productionization-and-deployment)
+    - 6.1 [Exporting from Notebook](#61-exporting-from-notebook)
+    - 6.2 [Docker Containerization](#62-docker-containerization)
+    - 6.3 [Deploying the Model to the Cloud Environment](#63-deploying-the-model-to-the-cloud-environment)
+    - 6.4 [CI/CD Workflow - Automated Deployment Process](#64-cicd-workflow-automated-deployment-process)
 7. [Conclusion](#7-conclusion)
 
 *Disclaimer: The project is not fully finished, but covered all the parts available as links above.*
@@ -295,14 +294,13 @@ Please follow this guideline:
 - Add the following roles:
     - BigQuery Admin
     - Storage Admin
-    - Storage Object Admin
 - And then, save your changes.
 
 ***Caution**: if you want to add your project to github, make sure you are working in private repo, or add it to `.gitignore` file*
 
 Until now, you've finished getting service account credentials.
 
-<img src="./src/Picture/gcp-iam.jpg">
+![gcp-iam](./src/Picture/gcp-iam.png)
 
 **Data Lake**
 
@@ -691,7 +689,7 @@ This topic is quite important and partially related with data engineering proces
 - Tools that support transformation at aggregation level is emerging, since ELT pattern is still counted as modern at the moment for batch data engineering pipeline. Some of famous tools you might have heard could be *dbt*, and *SQLMesh* which enable ability to perform complex incremental data loading logic, SCD handling, data lineage, data dict, and built-in data quality controlling at high level. However, you could still implement data aggregation with native airflow operator introduced by official provider by executing sql directly to data warehouse through Airflow.
 
 #### How to Optimize Data Models
-- What should be considered in gold layer (or curated) is technical aspects such as, SCD (Slow Changing Dimension), snapshot and incremental transformation (which usually involved with how ingestion pipelines work and silver layer partitioning), data transferring behavior or load type (transaction, full dump master or delta), and business logic (if semantic layer not exists or it required pre-calculation in gold layer)
+- What should be considered in gold layer (or curated) is technical aspects such as, SCD (Slow Changing Dimension), snapshot and incremental transformation (which usually involved with how ingestion pipelines work and silver layer partitioning), data transferring behavior or ingestion method (full dump, append, delta, or replace), and business logic (if semantic layer not exists or it required pre-calculation in gold layer)
 - **Pre-calculated table was proved to be more optimized when data is queried to dashboard. Moreover, data aggregation with only necessary partitioning considered also important in cost optimization when it come to larger scale in production database.**
 - Using view not only prevent downstream users from modifying table in ideal, but also manipulate the users to query from only specific period of data or partition resulting in lesser data scanning per read or per dashboard refresh.
     - Using view can futher lead to *data governance* issues such as user permission to read from both table and view if not considering dashboard permission. 
@@ -901,199 +899,450 @@ References:
 
 *Not started . . .*
 
-## 6. Model Deployment and Monitoring
+## 6. ML Code Productionization and Deployment
 
 After we developed and evaluated the model, we can deploy the model to production to leverage the business, bringing the model out from the Python notebook or your lab, and not only making it available to the data scientist.
 
-We can deploy the model to production in many approaches, please refer to this repo: [MLOps - ML System](https://github.com/patcha-ranat/MLOps-ml-system) for further principle and research on mlops. However, most approaches required *docker container* for consistent runtime even in different environments, so I will elaborate more on containerization for this topic.
-
-In this project, we will deploy the model to the cloud environment **(GCP)**. The model will be deployed as a web service using **FastAPI** as a web framework for building RESTful APIs, and **Docker** as a containerization platform to make the model portable and scalable.
+We can deploy the model to production in many approaches, please refer to this repo: [MLOps - ML System](https://github.com/patcha-ranat/MLOps-ml-system) for further details of principles and research on *MLOps* methodology. However, most approaches required *docker container* for consistent runtime even in different environments, so I will elaborate more on containerization for this topic.
 
 ![deploy-overview](./src/Picture/deploy-overview.png)
 
-The steps to deploy the model to production are:
-1. [Exporting the model(s)](#61-exporting-the-models)
-2. [Designing and creating an API web service using FastAPI](#62-designing-and-creating-an-api-web-service)
-3. [Making it portable and scalable using Docker Containerization](#63-docker-containerization)
-4. [Deploying the Codel to the Cloud Environment (GCP)](#64-deploying-the-model-to-the-cloud-environment)
-5. [*(Optional)* Automating the deployment process using CI/CD pipeline by Github Actions](#65-automating-the-deployment-process-optional)
+***Due to latest revise (Nov 2024), I decided to re-write this from [the previous version of this chapter](https://github.com/patcha-ranat/Ecommerce-Invoice-End-to-end/blob/7f57532552d5c948054753bbc0877d370cafd200/README.md#6-model-deployment-and-monitoring) into a new one, emphasizing less on typical concepts and focusing more on specific use case for this project. However, considering how huge scale of this project was, I also intended to separate this chapter into [MLOps - ML System](https://github.com/patcha-ranat/MLOps-ml-system?tab=readme-ov-file#mlops---ml-system) project to clarify more on my most interested topic in detail.***
+
+*Anyway, documentation for this topic will mostly focus more on overview concepts of packaging ML code to be ML pipeline with airflow dag integration and together with deployment on cloud through CI/CD Workflow. Interface service of inferencing such as an API with backend database and Model Monitoring, will be further implemented on, again [MLOps - ML System](https://github.com/patcha-ranat/MLOps-ml-system).*
+
+Although this project introduced multiple ML use cases, I choose [Customer Segmentation By RFM, KMeans, and Tree-based Model](#51-customer-segmentation-by-rfm-kmeans-and-tree-based-model) to be deployed with *precompute serving pattern*, so there's no model wrapped into a container or prediction API service, just ML Pipeline within docker container deployed with CI/CD Pipeline.
+
+*MLOps Code Structure and Logic*
+![kde-ecomm-mlops-code-structure](./src/Picture/kde-ecomm-mlops-code-structure.png)
+
+*MLOps Code Workflow*
+![kde-ecomm-mlops-code-workflow](./src/Picture/kde-ecomm-mlops-code-workflow.png)
+
+### 6.1 Exporting from Notebook
+
+First, we will focus on extracting the model development processes from notebook and transforming it into python module with *factory* pattern using `argparse` library and *OOP* concept. Some processes were improved to be more appropriate to be operated automatically through pipeline. Such as:
+- How data read/written into ML code
+    - Reader and Writer classes are implemented to support feeding input and retrieving output from ml service both local and cloud environments.
+- Selecting K Value
+    - Since now we can't consider optimal k value qualitatively by human through automated pipeline, clarifying logic/rules to find optimal K now become important.
+    - Here is the logic represented in math:
+    ![dynamic_k_equation](./src/Picture/dynamic_k_equation.png)
+- Model Development Changes
+    - Changing feature engineering process imputing recency feature from `999` to the real recency
+    - Replacing interpretation method from decision tree or xgboost feature importance with LightGBM and permutation feature importance for more interpretable and quantitative measurement.
+    - *(please, check [ML-Sandbox/dynamic_segmentation/revise_ecomm_logic.ipynb](https://github.com/patcha-ranat/ML-Sandbox/blob/main/dynamic_segmentation/revise_ecomm_logic.ipynb) for final ML Logic)*
+- Model Retaining Triggering is now implemented
+- Final output will be 2 data models, 2 ML models and artifacts (metadata + control file) and scaler.
+    - please check folder `code/models/output/` for output example
+    - [df_cluster_importance.parquet](./code/models/output/data/2024-11-08/df_cluster_importance.parquet)
+    - [df_cluster_importance.parquet](./code/models/output/data/2024-11-08/df_cluster_importance.parquet)
+
+#### Related Files
+- [code/models/main.py](./code/models/main.py) : entrypoint of the application using argparse
+- [code/models/abstract.py](./code/models/abstract.py) : abstract classes defining overview of implemented classes
+- [code/models/io_services.py](./code/models/io_services.py) : Input and Output related services (reader/wrtier)
+    - `InputLocalReader`: Reader for input *(data and interpreter if exists)* on local
+    - `InputGCPReader`: Reader for input *(data and interpreter if exists)* GCP cloud
+    - `InputProcessor`: Reader type selector (factory) based on argparse argument
+    - `OutputLocalWriter`: Writer for output on local
+    - `OutputGCPWriter`: Writer for output on GCP Cloud
+    - `OutputProcessor`: Writer type selector (factory) based on argparse argument
+- [code/models/ml_services.py](./code/models/ml_services.py) : ML Code Logic as a pipeline including,
+    - `CustomerProfilingService`: RFM - pre-processing, feature engineering to formulate RFM DataFrame
+    - `CustomerSegmentationService`: Clustering service, related to using KMeans model, and cross-validation automated finding optimal K value.
+    - `ClusterInterpretationService`: Interpretation service related to training/retraining LightGBM and utilizing permutation feature importance to find influenced features for each cluster
+    - `MLProcessor`: Orchestrator of overall ML services
+- [code/models/requirements.txt](./code/models/requirements.txt) : Python dependencies used in the app
+- [code/models/Dockerfile](./code/models/Dockerfile) : Packaging the app and dependencies to a docker container, installing additional components as app required (e.g. lightgbm prerequisites)
+
+**Please refer to [code/models/README.md](./code/models/README.md) for example of command usage.**
+
+### 6.2 Docker Containerization
+
+After python module works properly on local machine, we will package the code into docker container for the next step by [code/models/Dockerfile](./code/models/Dockerfile) file.
+
+*Note: What worth to mention is that the path specifying in the Dockerfile is relative to the current working directory where we execute the `docker build` command. So, we have to be aware of the path we specify in the Dockerfile and how we execute the file via Command Line Interface (CLI).*
+
+With [a few research](https://stackoverflow.com/questions/24537340/docker-adding-a-file-from-a-parent-directory), I found that it's not possible to specify the path to copy the files from the parent directory.
+
+And when we execute the command, we have to be in the ***./code/models/*** realative to root of the project and use this command pattern:
+
+```bash
+# workdir: ./code/models/
+
+docker build -t <image-name>:<tag> -f <path-to-dockerfile> <path-to-working-directory>
+# -t: tag the image with the name
+# -f: (Optional) specify the path to Dockerfile that we want to execute. Required when multiple Dockerfiles exist in the same working directory
+
+# which can lead to this command
+docker build -t ecomm/interpretable-dynamic-rfm-service:v2 .
+```
+
+1. Before packaging code into docker container, we have to make sure it works as expected within local environment.
+    ```bash
+    # test module local
+    python main.py --env local --method filesystem --input_path '../../data/ecomm_invoice_transaction.parquet' --output_path output --exec_date 2024-11-03
+
+    # test module local force_train
+    python main.py --env local --method filesystem --input_path '../../data/ecomm_invoice_transaction.parquet' --output_path output --exec_date 2024-10-29 --force_train
+
+    # test module against gcp
+    # TODO: Replace with your bucket name
+    python main.py --env gcp --project_id <project_id> --method filesystem --input_path 'gs://<landing_bucket_name>/input/data/2024-11-03/ecomm_invoice_transaction.parquet' --output_path 'gs://<staging_bucket_name>/output' --exec_date 2024-11-03
+    ```
+    *Note: Please refer to [initial_gcp.sh](./code/models/test/initial_gcp.sh) before testing against cloud environment*
+2. After packaging code into docker container, we have to make sure that its functionality both local and cloud method work perfectly within the container
+    ```bash
+    # test module local via docker
+    docker run \
+        ecomm/interpretable-dynamic-rfm-service:v1 \
+        --env local \
+        --method filesystem \
+        --input_path 'ecomm_invoice_transaction.parquet' \
+        --output_path output \
+        --exec_date 2024-10-29
+
+    # test module against gcp via docker
+    # TODO: Replace with your bucket name
+    docker run \
+        -v $HOME/.config/gcloud:/root/.config/gcloud \ # mount GCP default credential
+        ecomm/interpretable-dynamic-rfm-service:v2 \
+        --env gcp \
+        --method filesystem \
+        --input_path 'gs://<landing_bucket_name>/input/data/2024-11-03/ecomm_invoice_transaction.parquet' \
+        --output_path 'gs://<staging_bucket_name>/output' \
+        --exec_date 2024-11-03
+    ```
+
+If all steps work perfectly, we can now go to the next step: deploy to cloud
+
+### 6.3 Deploying the Model to the Cloud Environment
+
+After we have everything ready, we will deploy containerized ML Pipeline to cloud environment utilizing Google Artifact Registry (GAR), similar to *Docker Hub* but more secured within GCP.
+
+So, what we need to do is:
+1. **Prepare cloud environment and authentication**
+2. **Build the Docker image locally and push it to the Artifact Registry**
+
+#### 1. Prepare cloud environment and authentication
+
+First, you need to install '*Google Cloud CLI (gcloud/Cloud SDK)*' to make you more convenient to interact with gcp resources beyond web-based UI. Check installation completion by running `gcloud --version`.
+
+Rerference:
+- [Install the gcloud CLI - Google Cloud Platform](https://cloud.google.com/sdk/docs/install)
+
+For the sake of this topic and the next, please add this following roles for sufficient permissions:
+- **Artifact Registry Admin**: *For creating/deleting Artifact Registry object*
+- **IAM Workload Identity Pool Admin**: *For creating/deleting Workload Identity Federation (WIF) Pool*
+- **Service Account Token Creator**: *For account impersonation*
+- **Workload Identity User**: *For granting access from WIF to the service account*
+
+![deploy-access-example](./src/Picture/deploy-access-example.png)
+
+In the previous Terraform section, the steps are introduced to use '*static credentials*', loaded from cloud to local machine, to authenticate with GCP. But in this revised version, I will use *Application Default Credentials (ADC)* impersonated with a service account to authenticate between Terraform and GCP.
+- *ADC* is a method to authenticate to GCP interactively through CLI via *gcloud*. It's a proper authentication method when there's human involved between the processes, but impossible with automated pipeline.
+- ADC method let us login to GCP with email address through web browser interactively, and then it store a credential to gcloud default path to look for automatically when we try to authenticate with GCP with gcloud
+
+Please, run these commands to authenticate with impersonated account
+```bash
+# For first time using gcloud
+gcloud auth login
+
+# Logic through impersonated account through ADC method
+gcloud auth application-default login --impersonate-service-account <SERVICE_ACCT_EMAIL>
+
+# Set project
+gcloud config set project <project_id>
+```
+
+Then we execute these terraform configs
+- [/code/models/terraform/main.tf](./code/models/terraform/main.tf) together with [/code/models/terraform/variables.tf](./code/models/terraform/variables.tf)
+- [/code/models/terraform/auth/main.tf](./code/models/terraform/auth/main.tf) together with [/code/models/terraform/auth/variables.tf](./code/models/terraform/auth/variables.tf)
+by
+```bash
+# workdir: code/models/terraform
+terraform init
+terraform plan
+terraform apply
+terraform destroy
+
+# workdir: code/models/terraform/auth
+terraform init
+terraform plan
+terraform apply
+# terraform destroy
+```
+*Note: WIF shouldn't be created/deleted repeatedly, refer to [Stack Overflow - Terraform on GCP - Error 409: Requested entity already exists](https://stackoverflow.com/a/73944443)*
+```bash
+Error: Error creating WorkloadIdentityPool: googleapi: Error 409: Requested entity already exists
+```
+
+If below error occurred, please check if you have the '*Service Account Token Creator*' role in both owner account and service account. if yes, please try to reset `$GOOGLE_APPLICATION_DEFAULT` environment variable by `unset $GOOGLE_APPLICATION_DEFAULT`, restarting terminal and try to authenticate with `gcloud` with the above process again.
+```bash
+{
+  "error": {
+    "code": 403,
+    "message": "Permission 'iam.serviceAccounts.getAccessToken' denied on resource (or it may not exist).",
+    "status": "PERMISSION_DENIED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "IAM_PERMISSION_DENIED",
+        "domain": "iam.googleapis.com",
+        "metadata": {
+          "permission": "iam.serviceAccounts.getAccessToken"
+        }
+      }
+    ]
+  }
+}
+```
+
+References:
+- Terraform Code
+    - [terraform-google-github-actions-runners - main.tf - Github](https://github.com/terraform-google-modules/terraform-google-github-actions-runners/blob/master/modules/gh-oidc/main.tf)
+    - [terraform-google-github-actions-runners - variables.tf - Github](https://github.com/terraform-google-modules/terraform-google-github-actions-runners/blob/master/modules/gh-oidc/variables.tf)
+    - [Example Usage - Iam Workload Identity Pool Provider Github Actions - Terraform](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/iam_workload_identity_pool_provider#example-usage---iam-workload-identity-pool-provider-github-actions)
+- Debugging Authentication
+    - [Terraform on GCP - Impersonation not working (missing permission in generating access token)](https://stackoverflow.com/a/76110825)
+    - [Authentication for Terraform - Google Cloud Platform](https://cloud.google.com/docs/terraform/authentication)
+
+#### 2. Build the Docker image locally and push it to the Artifact Registry
+To puslish created docker image to GAR, please run the following commands:
+```bash
+# workdir: code/models/
+# gcloud auth application-default login --impersonate-service-account <SERVICE_ACCT_EMAIL>
+
+# gcloud configure docker
+gcloud auth configure-docker "<$REGION>-docker.pkg.dev"
+
+# Build image locally
+docker build -t <any-image-name> .
+
+# Change image name locally to acceptable format for GAR 
+docker tag <previous-step-image-name> <$REGION>-docker.pkg.dev/<$PROJECT_ID>/<$REPOSITORY>/<$IMAGE_NAME>:<$TAG>
+
+# Push image to GAR
+docker push <$REGION>-docker.pkg.dev/<$PROJECT_ID>/<$REPOSITORY>/<$IMAGE_NAME>:<$TAG>
+```
+Check the result, pushed image, at artifact registry gcp service.
+
+*Note: You can export the environment variables to avoid typing the same variables over and over again, reducing the chance of making a mistake.*
+
+Reference:
+- [Push and pull images - Google Cloud Platform](https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling)
+
+### 6.4 CI/CD Workflow - Automated Deployment Process
+
+When we make changes on the app service, we certainly need to re-deploy it to the cloud environment with a newer version for improvement on production. But, we don't want to do it manually every time, especially on production environment, which can cause error-prone and time-consuming process. So, this come to the important of automating the deployment process or CI/CD Workflow. CI/CD Pipeline make sure your developed application is well-maintained, qualified with tests, and deploy securely in predictable way without error-prone issue.
+
+![cicd-workflow-trigger-example](./src/Picture/cicd-workflow-trigger-example.png)
+
+*Github Actions (GHA)* is one of many CI/CD tools that we can use to automate the deployment process. It can automate tasks when we manually trigger it or with specific events we specified as its condition within the workflow. For example, we can automate the deployment process when we push on specific branch or create pull request with a certain branch to the repository.
+
+![cicd-workflow-example](./src/Picture/cicd-workflow-example.png)
+
+GHA workflow and code logic is not different from manual deployment process, including installing gcloud, authentication, building docker image from source code in GitHub, and pushing to specified image registry, except we can do this all processes with a few click. However, GHA workflow has its own syntax and some specific feature such as using pre-defined action, and accessing variables and GitHub default variables which make it a bit more complicated than regular bash command such as:
+
+```yaml
+# Using Environment Variable
+echo $ENV_VAR
+
+# This equal to above, but more useful in f-string scenario
+echo ${ENV_VARIABLE}
+
+# This call GitHub default variables
+echo ${{ github.ref_name }}
+
+echo ${{ inputs.xxx }}
+
+echo ${{ env.xxx }}
+
+# secret variable will be masked with '****' in GHA logs 
+echo ${{ secrets.xxx }}
+
+echo ${{ steps.STEPS_ID.outputs.* }}
+
+# Example of Other GHA Syntax
+...
+runs-on: ubuntu-latest
+    steps:
+        - name: step name 1
+          id: step_id_1
+          uses: repo/action@v1
+          with:
+            xxx: xxx
+        
+        - name: step name 2
+          id: step_id_2
+          run: |
+            echo xxx
+...
+```
+
+Related Files:
+- [.github/workflows/build-deploy-model.yml](./.github/workflows/build-deploy-model.yml) : CD Workflow
+- [.github/workflows/pull-request-ci.yml](./.github/workflows/pull-request-ci.yml) : CI Workflow
+
+#### Github Actions - Secrets Variable and Authentication
+
+The most important aspect for *Continuous Deployment (CD)* Workflow is authentication, because we need to make some changes to cloud resources. Traditionally, using long-lived credentials just like password through ***GHA secrets variables*** is the most typical and straightforward solution.
+- You have to get a credential file and copy its contents
+- Go to **Repo** > **Settings** > **Secrets and variables** > **Actions**
+- Create **New repository secret**, suppose secret name: `GCP_PASSWORD` and paste credential content as *Secret*
+- Now, you can use the secret for authentication
+    ```yaml
+    - uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_PASSWORD }}'
+    ```
+
+However, this long-lived credential is considered as security risk. So, there's a new service from GCP called *'Workload Identity Federation' (WIF)* which introduce authentication without credentials i.e. keyless authentication.
+
+WIF is quite complex in architecture perspective, but for usage, we just need service account email (without credential), WIF Pools, WIF Provider, and some additional step for granting service account access.
+
+- WIF in GHA
+    ```yaml
+    steps:
+        - name:  Authenticate GCP - Workload Identity Federation
+          uses: 'google-github-actions/auth@v2'
+          with:
+            project_id: ${{ secrets.PROJECT_ID }}
+            workload_identity_provider: ${{ secrets.WIF_PROVIDER_URL }}
+            service_account: ${{ secrets.SERVICE_ACCOUNT }}
+    ```
+    - we can see that it require no credential, but exposing security components or architecture may lead to security risk also.
+- WIF in Terraform
+    - [code/models/terraform/auth/main.tf](./code/models/terraform/auth/main.tf)
+    - Keys to enable this services are: `attribute_mapping`, `attribute_condition`, and `issuer_url`
+    ```
+    resource "google_iam_workload_identity_pool_provider" "main_provider" {
+        project                            = var.project_id
+        workload_identity_pool_id          = google_iam_workload_identity_pool.main_pool.workload_identity_pool_id
+        workload_identity_pool_provider_id = var.provider_id
+        display_name                       = var.provider_display_name
+        description                        = var.provider_description
+        attribute_mapping                  = var.attribute_mapping
+        attribute_condition                = var.attribute_condition
+        oidc {
+            issuer_uri        = var.issuer_uri
+        }
+    }
+    ```
+    - [code/models/terraform/auth/variable.tf](./code/models/terraform/auth/variable.tf)
+    ```
+    ...
+    variable "attribute_mapping" {
+        type = map(any)
+        default = {
+            "google.subject"                = "assertion.sub"
+            "attribute.aud"                 = "assertion.aud"
+            "attribute.repository_owner"    = "assertion.repository_owner"
+        }
+    }
+
+    variable "attribute_condition" {
+        type    = string
+        default = <<EOT
+            assertion.repository_owner == "patcha-ranat"
+        EOT
+    }
+
+    variable "issuer_uri" {
+        type    = string
+        default = "https://token.actions.githubusercontent.com"
+    }
+    ...
+    ```
+
+In the last step, we have to grant additional access to the service account which is quite hard to execute via web-based UI.
+```bash
+gcloud iam service-accounts add-iam-policy-binding "${SERVICE_ACC_NAME}@${PROJECT}.iam.gserviceaccount.com" \
+  --project=${PROJECT_ID} \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://${IAM_PRINCIPAL_ID}/attribute.repository_owner/patcha-ranat"
+```
+*Note:*
+- *For UI approach, you have to grant access via WIF pool page, on the right panel with 'CONNECTED SERVICE ACCOUNTS' tabs*
+- `IAM_PRICIPAL_ID` is retrieved from WIF pool page, also you have to replace *'pricipal'* to *'principalSet'*.
+
+However, there's some constraints for WIF that's worth mentioning
+- Assertion(s) in `attribute_condition` must be specified as subset of `attribute_mapping`. We don't have to specify condition for every mapped assertions, but recommendation from official GCP documentation is that we should specify 1 assertion atleast for security purpose.
+- Although there're example to specify multiple conditions as a string of `attribute_condition` like the below code snippet, there's a problem when we're trying to grant service account an IAM access. `--member` argument don't accept multiple conditions pattern. Some of specific project example, instead use `assertion.full = "assertion.A+assertion.B+..."` for fine grained controls to allow access to specific service accounts from specific events on specific GH repo.
+    ```
+    variable "attribute_condition" {
+        type    = string
+        default = <<EOT
+            assertion.sub == "xxx"
+            assertion.aud == "xxx"
+            assertion.repository_owner == "patcha-ranat"
+            ...
+        EOT
+    }
+    ```
+    Instead for `assertion.full`
+    ```
+    attribute_mapping = {
+        "google.subject" = "assertion.sub"
+        "attribute.aud"  = "assertion.aud"
+        "attibute.full"  = "assertion.repository+assertion.+repository_owner+..."
+    }
+    ```
+    ```bash
+    principalSet://${IAM_PRINCIPAL_ID}/attribute.full/${GH_REPO}${GH_REPO_OWENER}...
+    ```
+- `issuer_uri` is a static URL obtained from example and mentioned in documentation from GitHub
+
+**References:**
+- How to use `assertion.full`: [Stack Overflow](https://stackoverflow.com/a/76451745)
+- Another example of `assertion.full`: [Stack Overflow](https://stackoverflow.com/questions/72752410/attribute-mappings-in-configuring-workload-identity-federation-between-gcp-and-g)
+
+#### Workload Identity Federation Debugging
+```
+# Error: 1
+
+Error: google-github-actions/auth failed with: failed to generate Google Cloud federated token for //iam.googleapis.com/***: {"error":"invalid_request","error_description":"Invalid value for \"audience\". This value should be the full resource name of the Identity Provider
+```
+1. `GCP_WORKLOAD_IDENTITY_PROVIDER` in CD workflow must be in format: "project/<project_id>/..." with uri prefix removed.
+    - [Solution Source - Stack Overflow](https://stackoverflow.com/questions/76146054/gitlab-ci-cd-fails-to-connect-with-gcp-using-workload-identity-federation-and-id)
+```
+# Error: 2
+
+denied: Unauthenticated request. Unauthenticated requests do not have permission "artifactregistry.repositories.uploadArtifacts" on resource
+```
+2. `gcloud auth configure-docker` is required in CD workflow steps.
+    - [Solution Source - Stack Overflow](https://stackoverflow.com/questions/75840164/permission-artifactregistry-repositories-uploadartifacts-denied-on-resource-usin)
+```
+# Error: 3
+
+ERROR: (gcloud.auth.docker-helper) There was a problem refreshing your current auth tokens: ('Unable to acquire impersonated credentials'...
+```
+3. Granting additional iam access to service account specific for WIF is required
+    ```bash
+    gcloud iam service-accounts add-iam-policy-binding ...
+    ```
+
+```
+# Error: 4
+
+OIDC error: 403 'Unable to acquire impersonated credentials' [principalSet mismatch with the Subject claim]
+```
+- Attribute conditions specified when first creating WIF provider are not matched with conditions that we grant to Service Account in the last step.
+    - [Solution Source- Stack Overflow](https://stackoverflow.com/a/76451745)
+
+
+Finally, you can now manual trigger workflow for automated deployment (CD Workflow)
+
+*References:*
+1. **How OIDC work with cloud provider behind the scene, JWT attributes, and advance configuration**: [About security hardening with OpenID Connect](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/about-security-hardening-with-openid-connect)
+2. **Official GHA with GCP on Github Repo**: [Authenticate to Google Cloud from GitHub Actions - Direct Workload Identity Federation](https://github.com/google-github-actions/auth?tab=readme-ov-file#preferred-direct-workload-identity-federation)
+3. **GHA steps for WIF, recommendation, and gcloud commands from official published article**: [Enabling keyless authentication from GitHub Actions - Google Cloud Platform](https://cloud.google.com/blog/products/identity-security/enabling-keyless-authentication-from-github-actions)
+4. WIF & Terraform Medium Example: [Workload Identity Federation & GitHub Actions & Terraform - Medium](https://articles.arslanbekov.com/workload-identity-federation-github-actions-terraform-684813c201a9)
+5. GitHub default variables: [Store information in variables](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables)
 
 For more resource for deployment overview, I recommended this [ML Deployment Chapter](https://github.com/alexeygrigorev/mlbookcamp-code/tree/master/course-zoomcamp/05-deployment) from [*Machine Learning Zoomcamp*](https://github.com/alexeygrigorev/mlbookcamp-code/tree/master).
 
-### 6.1 Exporting the Model(s)
-
-In this section, we will export the model and extract the pipeline, pre-processing and transformation code, which we meant to use in the API web service.
-
-- For ML model, we will use **Pickle** to save the model as a file.
-    ```python
-    import pickle
-
-    # model.fit(X_train, y_train)
-    with open("./deployment/model_name.pkl", "wb") as f:
-        pickle.dump(model, f)
-    ```
-    Note: save in the same directory as [api_app.py](./deployment/api_app.py) file, so we can easily use it in `api_app.py` later.
-- For **pre-processing and transformation code**, we will extract the **production code** into Python script to be ready to put it in the FastAPI script. When we develop the model, it's usually in the phase of the experiment, consisting of validation and many trials and errors. But, when we deploy to production, we have to select the part of the code that's consistent and will work the best.
-
-### 6.2 Designing and Creating an API Web Service
-
-In this project, we will use **FastAPI** which is a high-performance, web framework for building APIs with Python. FastAPI official documentation is very well written, easy to understand and follow even you're not familiar with web development, just knowing a basic understanding of Python. Check it out here: [FastAPI Documentation](https://fastapi.tiangolo.com/)
-
-What I recommended are:
-- To understand its structure and how it works:
-    - [FastAPI: First Steps](https://fastapi.tiangolo.com/tutorial/first-steps/)
-    - [FastAPI: Path Parameters](https://fastapi.tiangolo.com/tutorial/path-params/)
-    - [FastAPI: Query Parameters](https://fastapi.tiangolo.com/tutorial/query-params/)
-    - [FastAPI: Request Body](https://fastapi.tiangolo.com/tutorial/body/)
-- To understand how to deploy it to production:
-    - [FastAPI: FastAPI in Containers - Docker](https://fastapi.tiangolo.com/deployment/docker/)
-
-Mostly, your API should have these endpoints:
-- **GET**: to get the path and query parameters from the client and return the result.
-- **POST**: to get the **"Request Body"** from the client and return the result.
-
-**Conceptually,**
-
-In my opinion, **GET** method should be used when the client wants to get some data from the server not using the request body to exploit the ML model.
-
-And, **POST** method should be used when the client wants to send the data to the server and get the result from the server which is more proper for utilizing ML model scenario.
-
-We will put pre-processing, transformation code, and write some logic to handle the request from the client in the FastAPI script. 
-
-*In development . . .*
-
-### 6.3 Docker Containerization
-
-After we designed and created the FastAPI script: [api_app.py](./deployment/api_app.py), we will pack it as a Docker image built by: [deployment.Dockerfile](./deployment/deployment.Dockerfile) and run it as a container when we want to use it.
-
-If your API use any libraries that are not included in the base image, you have to install it additionally in the Dockerfile with the second `requirements.txt` that is used by the FastAPI script.
-
-In the [deployment.Dockerfile](./deployment/deployment.Dockerfile), we will specify the base image, copy the FastAPI script, the model file, and dependencies for the script to the container, making it ready to be portable.
-
-**Note: What worth to mention is that the path specifying in the Dockerfile is relative to working directory, or where we execute the `docker build` command. So, we have to be aware of the path we specify in the Dockerfile and how to execute the file via CLI.**
-
-For example, in the [deployment.Dockerfile](./deployment/deployment.Dockerfile), we specify the path to copy the files as:
-
-```dockerfile
-COPY ./deployment .
-```
-
-Because the command meant to be executed via CLI having working directory in the root directory of the project, not the within `deployment` directory (and with [a few research](https://stackoverflow.com/questions/24537340/docker-adding-a-file-from-a-parent-directory), I found that it's not possible to specify the path to copy the files from the parent directory, so we can tell that this is the right and the only way to be done).
-
-And when we execute the command, we have to be in the root directory of the project with CLI and use this command pattern:
-
-```bash
-docker build -t <image-name> -f <path-to-dockerfile> <path-to-working-directory>
-# -t: tag the image with the name
-# -f: specify the path to Dockerfile that we want to execute
-
-# which can lead to this command
-docker build -t ecomm-invoice-api-local -f deployment\deployment.Dockerfile .
-
-```
-
-### 6.4 Deploying the Model to the Cloud Environment
-
-After we have everything ready, we will deploy the model to the cloud environment (GCP). We will use **Google Cloud Run** which is a serverless environment to deploy the containerized application. It's easy to use and manage, and it's also scalable. But, it needs to be connected to the **Artifact Registry** to use the Docker image we built.
-
-So, what we need to do is:
-- Build the Docker image locally and push it to the Artifact Registry.
-- Deploy the Docker image from the Artifact Registry to the Cloud Run.
-
-That's it! What we need to worry about is how to authenticate the GCP account to use the GCP CLI ***(gcloud)*** and how to connect the Artifact Registry to the Cloud Run which is very well documented in the GCP documentation:
-- [*Creating standard repositories in Artifact Registry*](https://cloud.google.com/artifact-registry/docs/repositories/create-repos)
-- [*Setting up authentication for Docker*](https://cloud.google.com/artifact-registry/docs/docker/authentication)
-- [*Pushing and pulling images*](https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling)
-- [*Deploying to Cloud Run*](https://cloud.google.com/run/docs/deploying#command-line)
-- [*Configuring containers*](https://cloud.google.com/run/docs/configuring/services/containers)
-
-First, you need to install Google Cloud CLI (gcloud/Cloud SDK) and then enable the Artifact Registry API and Cloud Run API (Read Documentation above for more detail). Second, you can run `gcloud --version` in Google Cloud SDK to check if it is able to be used. Third, add the following roles to the service account that you use to authenticate the gcloud CLI in IAM & Admin page:
-
-- Service Account User
-- Artifact Registry Writer
-- Artifact Registry Reader
-- Cloud Run Admin
-
-*Note: Add ***"Artifact Registry Administrator"*** role if you want to create a repository in the Artifact Registry via Terraform.*
-
-And the last step is manually creating a repository in the Artifact Registry.
-
-Then, you have to run the following commands:
-```bash
-# Google Cloud SDK Shell
-
-# use absolute path to the service account key file to avoid any error
-gcloud auth activate-service-account --key-file=path/to/your/service-account-key.json
-
-# replace placeholder with your desired region
-gcloud auth configure-docker "$REGION-docker.pkg.dev"
-
-# replace placeholder with your desired variables
-# this will build an image locally
-docker build -t "$REGION-docker.pkg.dev/$PROJECT_ID/$IMAGE_NAME:latest" -f deployment\deployment.Dockerfile .
-
-# this will tag the image for the Artifact Registry (This step is essential)
-docker tag "$REGION-docker.pkg.dev/$PROJECT_ID/$IMAGE_NAME:latest" $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest
-
-# this will push the image to the Artifact Registry
-docker push "$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest"
-
-# this will deploy the image in Artifact Registry to the Cloud Run
-gcloud run deploy $SERVICE_NAME --image $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest --region $REGION --port $PORT --project $PROJECT_ID --allow-unauthenticated
-```
-
-*Note1: All commands above are well documented in the GCP documentation, so you can read it above for more detail.*
-
-*Note2: You can export the environment variables to avoid typing the same variables over and over again, reducing the chance of making a mistake.*
-
-Then, you can go to **Cloud Run Console** and check **URL or an endpoint** where you application is deployed. You can also check the logs in the **Cloud Run Console** to see if there is any error. **Done!** You can test your application with the endpoints.
-
-### 6.5 Automating the Deployment Process *(Optional)*
-
-When we have developed the model and the API, we surely need to deploy it to the cloud environment with newer version of it. But, we don't want to do it manually every time we update the model or the API. So, this come to the important of automating the deployment process.
-
-Github Actions is one of many CI/CD tools that we can use to automate the deployment process. It's quite easy to use and manage, and it's also free for public repositories. It can automate tasks when we trigger it with the events we specify. For example, we can automate the deployment process when we push or pull request the code with a certain branch to the repository.
-
-What you need to do is upload your project to your own github repository, and create a sample branch that can be used to trigger the workflow. Then, create a workflow file in the `.github/workflows` directory. You can name it whatever you want, but it has to be in the `.yml` format. For example, I name it [**deploy.yml**](./.github/workflows/deploy.yml).
-
-I won't go into detail about how to write the workflow file, but you can check it out in [deploy.yml](./.github/workflows/deploy.yml). The process is similar to what we did in the previous section, but we have to specify the environment variables in the workflow file and add additionally steps for runner to check out the repository, set up the gcloud CLI, and authenticate the service account.
-
-**Github Secrets Variable**
-
-**The most important step** is to add the `GOOGLE_CREDENTIALS` to `Secrets` variables in Github. **Remember that we must not push or expose the service account key file to the public repository**, so we have to add it to the `Secrets` variable so that our workflow can use it to authenticate with google cloud services.
-
-In the [deploy.yml](./.github/workflows/deploy.yml), you should see something like, `${{ secrets.variable_name }}`. This indicate that the workflow call the variable from the `Secrets` variable we specified. You have to do the following steps to do it correctly:
-- Open [**"Git Bash"**](https://git-scm.com/downloads) and run the command to get the content of the service account key file in base64 encoded format.
-    ```bash
-    # Git Bash
-
-    # Use absolute path to the service account key file to avoid any error
-    cat path/to/your/local/service-account-key.json | base64
-    ```
-- Copy the output and go to your github repository.
-- Go to **Settings** > **Secrets and variables** > **New repository secret**.
-- Add the `GOOGLE_CREDENTIALS` as the name of the secret variable and paste the output of the command above to the value of the secret variable.
-- Click **Add secret** and Type in your password to confirm.
-- If you want any additional environment variables, you can add it to the `Secrets` variable as well, like `PROJECT_ID`, etc.
-
-*For the original detail of encoding the service account key as base64, check it [here](https://stackoverflow.com/a/75127891/22191119)*
-
-When we use it in the workflow, we will decode it back to the original format to put into the service account key file used to authenticate with google cloud services. And, after all the processes are done, we will delete the service account key file from the github runner to avoid any security issue. Check the code detail in the [deploy.yml](./.github/workflows/deploy.yml).
-
-Done! Now, you can push or pull request the code to the repository (with your specific branch) to trigger the workflow, and you can check the workflow status in the **Actions** tab in your github repository. You can also check the logs in the **Cloud Run Console** to see if there is any error.
-
-*Note1: for my personal method, I use `deploy` branch which is an arbitrary name and content in the branch is different from the `main` branch. So, I can pull request the code to the `deploy` branch to trigger the workflow. And if the workflow is failed, I fix the code in `main` branch and use `git reset` to undo the pushed code repeatedly. If you don't close the pull request, the workflow will be triggered again and again when you push the new version of workflow code to the `main` branch.*
-
-*Note2: **`git reset` then force push is dangerous when you're working with other collaborators**, please be aware of it. Check how to reset or undo the committed without traces [here](https://stackoverflow.com/a/31937298/22191119)*
-
-This solution of encoding the service account key file as base64 is not the best practice regarding security aspect. There's another better approach I found which is called ["Keyless authentication"](https://cloud.google.com/blog/products/identity-security/enabling-keyless-authentication-from-github-actions), but it's much more complicated and requires more services invloved and many more steps to be done. So, as we are in the learning phase, I think this approach is enough for now.
-
-**References:**
-- [Deploy a Dockerized FastAPI App to Google Cloud Platform](https://towardsdatascience.com/deploy-a-dockerized-fastapi-app-to-google-cloud-platform-24f72266c7ef)
-- [Discover what Google Cloud Run is, how it works and how to get started with Cloud Run.](https://www.d3vtech.com/insights/the-ultimate-guide-to-google-cloud-run)
-- [How To Deploy and Test Your Models Using FastAPI and Google Cloud Run](https://towardsdatascience.com/how-to-deploy-and-test-your-models-using-fastapi-and-google-cloud-run-82981a44c4fe)
-- [Step-by-step Approach to Build Your Machine Learning API Using Fast API](https://towardsdatascience.com/step-by-step-approach-to-build-your-machine-learning-api-using-fast-api-21bd32f2bbdb)
-- [How to Build MLOps Pipelines with GitHub Actions [Step by Step Guide]](https://neptune.ai/blog/build-mlops-pipelines-with-github-actions-guide)
 ## 7. Conclusion
 
 From this project, we learned how to:
@@ -1105,16 +1354,13 @@ From this project, we learned how to:
 - **Develop machine learning models** to predict the future sales, customer segments, and inferencing customer buying behavior.
 - **Deploy the model to production** to leverage the business using API web service, and cloud services.
 
-This is the biggest personal project I've ever done so far, and I learned a lot from it. I hope it can be useful for anyone reading this as well.  Although this project is not fully finished yet, but I will keep working on it and update it continuously as my knowledge and experience grow.
+This is the biggest personal project I've ever done so far, and I learned a lot from it. I hope it can be useful for anyone who shares the same learning path. Although this project is not fully finished yet, but I will keep working on it and update it continuously as my knowledge and experience grow.
 
 ***Thank you for your reading, happy learning.***
 
 ---
 *What's coming next?*
 
-- Productionalization of FastAPI together with ML solution as ML System enabling MLOps.
-- Extending to Redshift cluster is not fully finished, so I will continue to work on it and then extend to Microsoft Azure.
-- The ETL pipeline in the part of loading data to the local target Postgres database is not fully finished.
 - Recommendation System, Churn prediction Model, and Price Analysis.
 
 ---

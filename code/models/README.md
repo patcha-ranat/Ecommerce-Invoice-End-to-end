@@ -3,7 +3,7 @@
 
 *patcharanat p.*
 
-## Usage
+## Local Usage
 - please, refer to [input_example.sh](./test/input_example.sh)
 ```bash
 # Example for local execution
@@ -37,45 +37,52 @@ python main.py ...
 
 ## Cloud Authentication
 ```bash
-gcloud auth application-default login
+# first time
+gcloud auth login
 
-gcloud config set project <project_id>
+# using ADC (Application Default Credentials) method
+gcloud auth application-default login
 
 # for impersonated account
 gcloud auth application-default login --impersonate-service-account <SERVICE_ACCT_EMAIL>
+
+gcloud config set project <project_id>
 ```
 
 ## Terraform
 - Prerequisite: `gcloud`
 - please refer to this [official documentation](https://cloud.google.com/docs/terraform/authentication) for official authentication approaches.
 ```bash
-cd terraform
+# workdir: code/models/terraform
 
 terraform init
 terraform plan
 terraform apply
 terraform destroy
+
+# For Workload Identity Federation
+# workdir: code/models/terraform/auth
+
+terraform init
+terraform plan
+terraform apply
+# terraform destroy # be careful with work identity pools deletion
 ```
 
-## Usgae via CLoud (GCP)
+## Usgae via Cloud (GCP)
 ```bash
 # apply terraform to create bucket or bigquery dataset
 # workdir: code/models/terraform
 
-
 # workdir: code/models
 # ./test/initial_gcp.sh
 cp ../../data/ecomm_invoice_transaction.parquet .
-
 gsutil cp ecomm_invoice_transaction.parquet gs://<landing/uri>
-
 rm ecomm_invoice_transaction.parquet
-
 
 # ./test/input_sample.sh
 # local - gcp
 python main.py --env gcp --project_id <project_id> --method filesystem --input_path 'gs://<landing_bucket_name>/input/data/2024-11-03/ecomm_invoice_transaction.parquet' --output_path 'gs://<staging_bucket_name>/output' --exec_date 2024-11-03
-
 
 docker build -t ecomm/interpretable-dynamic-rfm-service:v2 .
 
