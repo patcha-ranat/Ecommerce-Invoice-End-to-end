@@ -37,17 +37,17 @@ jobs:
                 echo 'Image version: ${{ inputs.imageVersion }}'
                 echo 'Target Stage Repo: ${{ inputs.targetStageRepo }}'
 
-            - name: Install Dependencies (Setup Cloud SDK)
-              uses: 'google-github-actions/setup-gcloud@v2'
-              with:
-                version: '500.0.0'
-
             - name:  Authenticate GCP - Workload Identity Federation
               uses: 'google-github-actions/auth@v2'
               with:
                 project_id: ${{ secrets.PROJECT_ID }}
                 workload_identity_provider: ${{ secrets.WIF_PROVIDER_URL }}
                 service_account: ${{ secrets.SERVICE_ACCOUNT }}
+
+            - name: Install Dependencies (Setup Cloud SDK)
+              uses: 'google-github-actions/setup-gcloud@v2'
+              with:
+                version: '500.0.0'
 
             - name: Configure Docker Client of gcloud
               run: |

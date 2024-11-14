@@ -42,7 +42,7 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
     <!-- - 5.4 [Recommendation System](#54-recommendation-system) -->
     <!-- - 5.5 [Customer Churn Prediction](#55-customer-churn-prediction) -->
     <!-- - 5.6 [Price Analysis and Optimization](#56-price-analysis-and-optimization) -->
-6. [ML Code Productionization and Deployment](#6-ml-code-productionization-and-deployment)
+6. [**ML Code Productionization and Deployment**](#6-ml-code-productionization-and-deployment)
     - 6.1 [Exporting from Notebook](#61-exporting-from-notebook)
     - 6.2 [Docker Containerization](#62-docker-containerization)
     - 6.3 [Deploying the Model to the Cloud Environment](#63-deploying-the-model-to-the-cloud-environment)
@@ -63,12 +63,10 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
 - Data Lake & Staging Area
     - Google Cloud Storage
     - AWS S3
-    *(Extend to Azure Blob Storage in the future)*
 - Data Warehouse
     - Postgres Database
     - Bigquery (External and Native Tables)
     - Redshift
-    *(Extend to Azure Synapse in the future)*
 - Orchestrator
     - Airflow
 - Virtualization and Infrastucture management
@@ -78,12 +76,11 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
     - PowerBI (Desktop and Service)
     - Python (Jupyter Notebook)
 - Machine Learning Model Development
-    - Jupyter Notebook
-- Model Deployment and Monitoring
-    - FastAPI (Model Deployment)
-    - ~~Streamlit (Monitoring)~~
+    - Python
+- Model Deployment
+    - Docker
     - Artifact Registry
-    - Cloud Run
+    - Workload Identity Federation (Keyless Authentication)
     - Github Actions (CI/CD)
 
 Dataset: [E-Commerce Data - Kaggle](https://www.kaggle.com/datasets/carrie1/ecommerce-data)
