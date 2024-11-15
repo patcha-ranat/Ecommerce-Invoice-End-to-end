@@ -88,7 +88,7 @@ def entrypoint():
         )
         output_processor.process()
         
-        logging.info("Main Process -- Success: OutputProcessor")
+        logging.info(f"Main Process -- Success: OutputProcessor")
 
         logging.info("Main Process -- Success")
     except Exception as err:
