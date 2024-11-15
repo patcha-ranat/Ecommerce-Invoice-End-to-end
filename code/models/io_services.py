@@ -561,7 +561,6 @@ class InputProcessor(BaseIOProcessor):
             "method": self.method,
             "project_id": self.project_id,
             "exec_date": self.exec_date,
-            "project_id": self.project_id,
             "input_path": self.input_path,
             "output_path": self.output_path
         }
@@ -945,7 +944,7 @@ class GCPOutputWriter(BaseOutputWriter):
             # aka control file as json
             # prep filename and path
             artifact_file_name = f"{filename}.json"
-            artifact_flag_path = f"{self.output_path}/artifact/{self.exec_date}/ANOMALY_EXIST" 
+            # artifact_flag_path = f"{self.output_path}/artifact/{self.exec_date}/ANOMALY_EXIST" 
             artifact_path = f"{self.output_path}/artifact/{self.exec_date}/{artifact_file_name}"
 
 

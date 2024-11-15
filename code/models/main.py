@@ -47,7 +47,7 @@ def entrypoint():
         logging.info("Main Process -- Start")
 
         # input service
-        logging.info(f"Main Process -- Executing... InputProcessor")
+        logging.info("Main Process -- Executing... InputProcessor")
         
         input_processor = InputProcessor(
             env=args.env,
@@ -61,10 +61,10 @@ def entrypoint():
         df = inputs.get("df")
         interpreter = inputs.get("interpreter")
         
-        logging.info(f"Main Process -- Success: InputProcessor")
+        logging.info("Main Process -- Success: InputProcessor")
         
         # ml services
-        logging.info(f"Main Process -- Executing... MlProcessor")
+        logging.info("Main Process -- Executing... MlProcessor")
         
         ml_processor = MLProcessor(
             df=df, 
@@ -73,7 +73,7 @@ def entrypoint():
         )
         outputs: dict = ml_processor.process()
         
-        logging.info(f"Main Process -- Success: MlProcessor")
+        logging.info("Main Process -- Success: MlProcessor")
 
         # output service
         logging.info("Main Process -- Executing... OutputProcessor")

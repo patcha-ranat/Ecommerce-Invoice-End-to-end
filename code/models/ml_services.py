@@ -90,7 +90,7 @@ class CustomerProfilingService(BaseMLService):
         recency_df["recency"] = (
             recency_df["recency"]
             .fillna((calculation_date - unique_invoice["InvoiceDate"]))
-            .apply(lambda x: x if type(x) == float else x.days)
+            .apply(lambda x: x if isinstance(x, float) else x.days)
             .astype(int)
         )
         recency_df = recency_df.drop(columns=["InvoiceNo", "InvoiceDate"])
@@ -350,7 +350,7 @@ class CustomerSegmentationService(BaseMLService):
             else:
                 if (np.inf not in proportion_rcs) and (~is_nan_exist):
                     # use 2nd derivative to find elbow
-                    logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Using 2nd derivative method")
+                    logging.info("ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Using 2nd derivative method")
                     for i, e in enumerate(proportion_rcs):
                         logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- proportion_rcs: {proportion_rcs[i:]}")
                         if (np.array(proportion_rcs[i:])*100 <= slopes_change_threshold_percentage).all():
@@ -361,7 +361,7 @@ class CustomerSegmentationService(BaseMLService):
                             continue
                 else:
                     # use 1st derivative to find elbow
-                    logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Using 1st derivative method")
+                    logging.info("ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Using 1st derivative method")
                     first_slopes: int | float = slopes[0]
                     proportion_slopes: np.NDArray = np.divide(slopes, first_slopes)
 
@@ -376,7 +376,7 @@ class CustomerSegmentationService(BaseMLService):
 
                 if optimal_k == 0:
                 # use most linear point to find elbow
-                    logging.info(f"ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Using Most Linear Point method")
+                    logging.info("ML Process -- Customer Segmentation (KMeans) -- Finding Optimal K -- Using Most Linear Point method")
                     while True:
                         # Step 1: Use the rate of change of slopes to find the most significant elbow point
                         # The minimum second derivative indicates the most linear point.
