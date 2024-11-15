@@ -3,7 +3,7 @@ name: pull-request-ci
 on:
   pull_request:
     branches:
-      - 'feature/**'
+      - 'master'
 
 jobs:
   build:
