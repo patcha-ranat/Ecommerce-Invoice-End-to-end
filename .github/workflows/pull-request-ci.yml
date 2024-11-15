@@ -27,5 +27,5 @@ jobs:
           PYTHONPATH="code/models" pytest tests/unit/test_ml_services.py --disable-pytest-warnings
 
       - name: Lint code with Ruff
-        run: ruff check code/models/*.py --config ci/ruff.toml --output-format=github
+        run: ruff check code/models/*.py --output-format=github
         continue-on-error: false
