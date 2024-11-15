@@ -1,0 +1,32 @@
+name: pull-request-ci
+
+on:
+    pull_request:
+        types: [opened, reopened, edited]
+        branches:
+            - main
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                python-version: '3.10'
+
+            - name: Install dependencies
+              run: |
+                python -m pip install --upgrade pip
+                pip install -r requirements-ci.txt
+            
+            - name: Test with pytest
+              run: |
+                PYTHONPATH="code/models" pytest tests/unit/test_ml_services.py --disable-pytest-warnings
+
+            - name: Lint code with Ruff
+              run: ruff check code/models/*.py --config ci/ruff.toml --output-format=github
+              continue-on-error: false
