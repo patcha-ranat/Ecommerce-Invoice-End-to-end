@@ -1,5 +1,6 @@
 # source files and cache
-config
+src/config/variables.json
+src/config/connections.json
 logs
 pgdata
 plugins
