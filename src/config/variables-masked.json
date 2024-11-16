@@ -1,0 +1,10 @@
+{
+    "project_id": "XXX",
+    "region": "XXX",
+    "gcs": {
+        "landing": "XXX_landing_bucket_name",
+        "staging": "XXX_staging_bucket_name",
+        "curate": "XXX_curate_bucket_name"
+    },
+    "gar_repo": "XXX_Artifact_registry_repo_name"
+}

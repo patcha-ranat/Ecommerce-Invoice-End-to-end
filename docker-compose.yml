@@ -3,14 +3,17 @@ version: '3'
 x-airflow-common:
   &airflow-common
   image: apache/airflow:2.6.2
-  user: "${AIRFLOW_UID}:${AIRFLOW_GID}"
+  # user: "${AIRFLOW_UID}:${AIRFLOW_GID}"
+  user: "50000:0"
   env_file: 
-    - .env
+    - ./airflow.properties
   volumes:
     - ./src/dags:/opt/airflow/dags
     - ./src/logs:/opt/airflow/logs
     - ./src/plugins:/opt/airflow/plugins
     - ./src/config:/opt/airflow/config
+    # airflow-GCP ADC
+    - ${APPDATA}/gcloud:/config/gcloud
 
 x-depends-on:
   &depends-on
@@ -28,11 +31,11 @@ services:
     image: postgres-source
     container_name: postgres-container-source
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB_SOURCE}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mydatabase
     ports:
-      - 5432:${POSTGRES_PORT}
+      - 5432:5432
     restart: unless-stopped
     # volumes:
       # - ./src/pgdata_source:/var/lib/postgresql/data
@@ -44,11 +47,11 @@ services:
     image: postgres-target
     container_name: postgres-container-target
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB_TARGET}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: targetdb
     ports:
-      - 5433:${POSTGRES_PORT}
+      - 5433:5432
     restart: unless-stopped
     # volumes:
       # - ./src/pgdata_target:/var/lib/postgresql/data
@@ -71,7 +74,6 @@ services:
 
   airflow-scheduler:
     <<: *airflow-common
-    <<: *depends-on
     build:
       context: .
       dockerfile: airflow.Dockerfile
@@ -81,7 +83,6 @@ services:
 
   airflow-webserver:
     <<: *airflow-common
-    <<: *depends-on
     build:
       context: .
       dockerfile: airflow.Dockerfile

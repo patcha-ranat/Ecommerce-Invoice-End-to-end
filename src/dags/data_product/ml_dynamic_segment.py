@@ -11,36 +11,42 @@ Call Docker Image from GAR and execute with airflow parameter
 4. Write Output
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from airflow import models
 from airflow.operators.empty import EmptyOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 
 
+# DAG Attributes
 DAG_ID: str = "kde.data_product.ml_dynamic_segment"
 
+# airflow variables
 PROJECT_ID: str = models.Variable.get("project_id")
+REGION: str = models.Variable.get("region")
+GAR_REPO: str = models.Variable.get("gar_repo")
+GCS: dict = models.Variable.get("gcs", deserialize_json=True)
 
+# DAG Config
 default_config: dict = {
-    "image": "interpretable-dynamic-rfm-service",
-    "image_version": "2"
+    "image": "interpretable-dynamic-rfm-service:v2"
 }
 
-IMAGE_ID: str = f"{default_config.get('image')}:v{default_config.get('image_version')}"
+image_id = f"{REGION}-docker.pkg.dev/{PROJECT_ID}/{GAR_REPO}/{default_config.get('image')}"
 
-gcs: dict = models.Variable.get("gcs")
 
 default_dag_args: dict = {
     "doc_md": __doc__,
     "default_view": "grid",
     "retries": 2,
-    "catchup": False
+    "retry_delay": timedelta(minutes=5),
+    "depends_on_past": False
 }
 
 with models.DAG(
         dag_id=DAG_ID,
         start_date=datetime(2024, 11, 1),
-        schedule_interval="0 14 * * *",
+        schedule="0 14 * * *",
+        catchup=False,
         default_args=default_dag_args,
         tags=["data_product", "ml"]
 ) as dag:
@@ -48,15 +54,15 @@ with models.DAG(
 
     segment_task = DockerOperator(
         task_id="segment",
-        image=IMAGE_ID,
+        image=image_id,
         # mounts=,
         auto_remove=True,
         command=[
             "--env", "gcp", 
             "--project_id", PROJECT_ID,
             "--method", "filesystem", 
-            "--input_path", f"gs://{gcs.get('landing')}/input/data/{{ ds }}/ecomm_invoice_transaction.parquet", 
-            "--output_path", f"gs://{gcs.get('staging')}/output", 
+            "--input_path", f"gs://{GCS.get('landing')}/input/data/{{{{ ds }}}}/ecomm_invoice_transaction.parquet", 
+            "--output_path", f"gs://{GCS.get('staging')}/output", 
             "--exec_date", "{{ ds }}"
         ]
     )
