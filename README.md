@@ -1181,6 +1181,13 @@ runs-on: ubuntu-latest
 Related Files:
 - [.github/workflows/build-deploy-model.yml](./.github/workflows/build-deploy-model.yml) : CD Workflow
 - [.github/workflows/pull-request-ci.yml](./.github/workflows/pull-request-ci.yml) : CI Workflow
+    - References:
+        - OOP pytest: [Object oriented testing in Python - geeksforgeeks](https://www.geeksforgeeks.org/object-oriented-testing-in-python/)
+        - Multiple test cases with pytest - parametrize: [How to parametrize fixtures and test functions](https://docs.pytest.org/en/stable/how-to/parametrize.html)
+        - Suppressing pytest warnings: [Stack Overflow](https://stackoverflow.com/questions/40710094/how-to-suppress-py-test-internal-deprecation-warnings)
+        - Python Linter: [The Ruff Linter - Ruff Official](https://docs.astral.sh/ruff/linter/)
+        - Ruff Configuration: [Configuring Ruff - Ruff Official](https://docs.astral.sh/ruff/configuration/)
+        - CI Workflow - Pull Request Event Trigger: [Events that trigger workflows - GitHub Official](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request)
 
 #### Github Actions - Secrets Variable and Authentication
 
@@ -1349,7 +1356,7 @@ From this project, we learned how to:
 - **Utilize cloud services** to extend the datalake, data warehouse to production.
 - **Create a dashboard** to visualize the data and analyze the business.
 - **Develop machine learning models** to predict the future sales, customer segments, and inferencing customer buying behavior.
-- **Deploy the model to production** to leverage the business using API web service, and cloud services.
+- **Productionize Machine Learning Code/Pipeline** to cloud environment as a microservice either manual process or CI/CD Pipeline with keyless authentication. 
 
 This is the biggest personal project I've ever done so far, and I learned a lot from it. I hope it can be useful for anyone who shares the same learning path. Although this project is not fully finished yet, but I will keep working on it and update it continuously as my knowledge and experience grow.
 
