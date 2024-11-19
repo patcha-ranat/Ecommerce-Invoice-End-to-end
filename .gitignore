@@ -36,6 +36,7 @@ unit_test.ipynb
 
 # environment
 pyenv
+.env
 
 # local environment testing
 *.db
