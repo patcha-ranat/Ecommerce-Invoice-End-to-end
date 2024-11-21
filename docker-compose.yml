@@ -7,13 +7,28 @@ x-airflow-common:
   user: "50000:0"
   env_file: 
     - ./airflow.properties
+  environment:
+    # GOOGLE_APPLICATION_CREDENTIALS: /.config/gcloud/application_default_credentials.json
+    GOOGLE_APPLICATION_CREDENTIALS: /gcp/gcloud/application_default_credentials.json
+    # GOOGLE_APPLICATION_CREDENTIALS: /root/.config/gcloud
+    GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
+    CLOUDSDK_CORE_PROJECT: ${GOOGLE_CLOUD_PROJECT}
+    GCP_REGION: ${GCP_REGION}
+    # CLOUDSDK_CONFIG: /.config/gcloud
+    # LOCAL_MOUNTS: ${APPDATA}/gcloud
+  entrypoint: ./airflow-entrypoint.sh
   volumes:
     - ./src/dags:/opt/airflow/dags
     - ./src/logs:/opt/airflow/logs
     - ./src/plugins:/opt/airflow/plugins
     - ./src/config:/opt/airflow/config
     # airflow-GCP ADC
-    - ${APPDATA}/gcloud:/config/gcloud
+    # - ${APPDATA}/gcloud/application_default_credentials.json:/.config/gcloud/application_default_credentials.json
+    - ${APPDATA}/gcloud:/gcp/gcloud
+    - ./airflow-entrypoint.sh:/opt/airflow/airflow-entrypoint.sh
+    # - ${APPDATA}/gcloud:/root/.config/gcloud
+    # for docker operator requied docker sesseion on local
+    - //var/run/docker.sock:/var/run/docker.sock
 
 x-depends-on:
   &depends-on

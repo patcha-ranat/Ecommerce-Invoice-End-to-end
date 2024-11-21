@@ -14,6 +14,7 @@ stop:
 	docker compose down -v
 
 airflow-import:
-	docker exec -it airflow-scheduler airflow variables import variables.json && \
-	airflow connections import connections.json && \
-	exit
+	docker exec -it airflow-scheduler bash \
+	&& airflow variables import config/variables.json \
+	&& airflow connections import config/connections.json \
+	&& exit
