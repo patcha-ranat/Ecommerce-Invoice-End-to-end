@@ -53,7 +53,7 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
 
 ## **Project Overview**
 
-![project-overview](./src/Picture/project-overview.png)
+![project-overview](./docs/project-overview.png)
 
 ## **Tools**:
 - Sources
@@ -95,7 +95,7 @@ Dataset: [E-Commerce Data - Kaggle](https://www.kaggle.com/datasets/carrie1/ecom
 
 ## 1. Setting up Environment
 
-![setting-overview](./src/Picture/setting-overview.png)
+![setting-overview](./docs/setting-overview.png)
 
 Firstly, clone this repository to obtain all neccessary files, then use it as root working directory.
 ```bash
@@ -152,7 +152,7 @@ docker compose up -d
 
 ***Note:** some services need time to start, check container's logs from **docker desktop UI** or `docker ps` to see if the services are ready to work with.*
 
-<img src="./src/Picture/docker-ps.jpg">
+<img src="./docs/docker-ps.jpg">
 
 ### 1.3 Checking if all Dockerfiles correctly executed
 What's needed to be checked are
@@ -181,7 +181,7 @@ ls docker-entrypoint-initdb.d/
 
 you should see the data csv file and `setup.sql` file in the directory.
 
-<img src="./src/Picture/dockerfile-executed.jpg">
+<img src="./docs/dockerfile-executed.jpg">
 
 What you should check more is that credentials file: `kaggle.json` correctly imported in airflow's scheduler and webservice containers.
 
@@ -199,7 +199,7 @@ Then we will check table, and schema we executed by `setup.sql` file
 ```
 if we see table and schema are corrected and shown, then importing csv to the Postgres database part is done.
 
-<img src="./src/Picture/check-postgres.jpg">
+<img src="./docs/check-postgres.jpg">
 
 if not, these can be issues
 - check if `setup.sql` is executed successfully, by inspecting logs in docker desktop
@@ -232,13 +232,13 @@ docker compose down -v
 
 and remove all images via `docker desktop`, we will initiate `docker compose build` and `docker compose up -d` again, when we want to test developed ETL code (test our airflow DAGs).
 
-<img src="./src/Picture/docker-desktop.jpg">
+<img src="./docs/docker-desktop.jpg">
 
 ### 1.6 Setting up Airflow Web UI
 
 To set up airflow, we need to define more 4 services that refer to [official's .yml file template](https://airflow.apache.org/docs/apache-airflow/2.6.1/docker-compose.yaml) including `airflow-postgres` to be backendDB, `airflow-scheduler` to make scheduler, `airflow-webserver` to make airflow accessible via web UI, and `airflow-init` to initiate airflow session.
 
-<img src="./src/Picture/airflow-ui.jpg" width="75%">
+<img src="./docs/airflow-ui.jpg" width="75%">
 
 Understanding how every components in `docker-compose.yml` work make much more easier to comprehend and debug issues that occur, such as `depends-on`, `environment`, `healthcheck`, `context`, `build`, and storing object in `&variable`.
 
@@ -274,7 +274,7 @@ In this project, I used a dataset from kaggle which was:
 - uploaded to this repo github as csv format
 - and I wrote DAGs to use Kaggle API to obtain the dataset directly from the Kaggle website.
 
-<img src="./src/Picture/etl-overview.png">
+<img src="./docs/etl-overview.png">
 
 If you use different dataset, you might have to write your own DAGs what match your specific use cases.
 
@@ -297,7 +297,7 @@ Please follow this guideline:
 
 Until now, you've finished getting service account credentials.
 
-![gcp-iam](./src/Picture/gcp-iam.png)
+![gcp-iam](./docs/gcp-iam.png)
 
 **Data Lake**
 
@@ -312,7 +312,7 @@ Then, choose the options that match you specific needs, the recommend are:
 
 Click `Create`, and now you have your own data lake bucket.
 
-<img src="./src/Picture/gcs-ui.jpg" width="75%">
+<img src="./docs/gcs-ui.jpg" width="75%">
 
 **Data Warehouse**
 
@@ -327,7 +327,7 @@ Do the following to create your dataset and table:
 
 Until now, you've finished creating your data warehouse that's ready to load our data in.
 
-<img src="./src/Picture/bigquery-ui.jpg" width="75%">
+<img src="./docs/bigquery-ui.jpg" width="75%">
 
 As you can see it's quite inconvenient that we have to create all of these resources manually via Google UI. So, we will use **Terraform** to create these resources in the next step.
 
@@ -364,7 +364,7 @@ After all, you can see the result in your GCP console, in Google cloud storage, 
 
 ### 2.2 Setting up DAG and Connections
 
-<img src="./src/Picture/airflow-dag-graph.jpg">
+<img src="./docs/airflow-dag-graph.jpg">
 
 In this project, I wrote main script: [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl_dag.py) to create 1 DAG of **(8+1) tasks**, which are:
 1. Reading data from raw url from github that I uploaded myself. Then, upload it to GCP bucket as uncleaned data.
@@ -390,7 +390,7 @@ But before triggering the DAG, we need to set up the connection between Airflow 
 - `Password` *username of postgres in docker-compose.yml*
 - `Port` *username of postgres in docker-compose.yml*
 
-<img src="./src/Picture/airflow-connections-postgres.jpg" width="75%">
+<img src="./docs/airflow-connections-postgres.jpg" width="75%">
 
 And then, `Save`
 
@@ -404,7 +404,7 @@ And then, `Save`
 - `Project Id`: Your Project Id
 - `Keyfile Path`: *absolute path to your service account credentials file*
 
-<img src="./src/Picture/airflow-connections-google.jpg" width="75%">
+<img src="./docs/airflow-connections-google.jpg" width="75%">
 
 And then, `Save` again.
 
@@ -412,7 +412,7 @@ And then, `Save` again.
 
 For futher details, we only create connections of Postgres and Bigquery for fetching data from containerized Postgres database, and creating **external table** for Bigquery respectively because it's required, unless airflow could not connect to the applications and cause the bug. Most of time, you can tell if it requires connection in Airflow UI by existing of `conn_id` arguments in the Operators. But, the other connection,  like Google Cloud Storage, is not required to be created in Airflow UI, because we use the credentials file that mounted into Airflow container to authenticate the connection in the code.
 
-<img src="./src/Picture/airflow-connections.jpg" width="75%">
+<img src="./docs/airflow-connections.jpg" width="75%">
 
 <details><summary>Reproducing Note for DAGs development</summary>
 <p>
@@ -446,7 +446,7 @@ FROM apache/airflow:slim-2.6.2-python3.10
 
 **Bigquery: Native tables vs External tables**
 
-<img src="./src/Picture/native-vs-external.png" width="75%">
+<img src="./docs/native-vs-external.png" width="75%">
 
 In the DAG script, we have 2 tasks to load data to Bigquery, one is using Native table, and another is using External table. the differences between them are their performance and how it works.
 
@@ -458,7 +458,7 @@ After finishing the writing DAG part, we can go to `localhost:8080` via web brow
 
 You can also see the logs of each task by clicking on the task name in the DAG graph and see how the tasks flow is working via Graph.
 
-<img src="./src/Picture/airflow-triggered.jpg">
+<img src="./docs/airflow-triggered.jpg">
 
 Most of time, you don't write the DAGs in one time and test only once when it's done, you have to come to this UI, triggering and monitoring to see if it works or not, and then fix the bugs. It's very helpful to debug the code by reading the logs and checking which tasks are failed.
 
@@ -648,7 +648,7 @@ This part is mostly done with Python by **Pandas** and **Matplotlib**, because o
 </p>
 </details>
 
-<img src="./src/Picture/boxplot_outlier.png" width="75%">
+<img src="./docs/boxplot_outlier.png" width="75%">
 
 You can check the code in [**ecomm_eda.ipynb**](ecomm_eda.ipynb) file.
 
@@ -663,7 +663,7 @@ We can connect parquet file locally to Power BI:
 
 Now we can see the data in PowerBI, and do the data visualization.
 
-![ecomm_pbi](./src/Picture/ecomm_pbi.jpg)
+![ecomm_pbi](./docs/ecomm_pbi.jpg)
 
 I won't go into detail of how to create the dashboard or each component, but you can download and check it yourself in [**ecomm_bi.pbix**](ecomm_bi.pbix) file.
 
@@ -681,7 +681,7 @@ This topic is quite important and partially related with data engineering proces
 - Although *ingestion* process is completed, we might need to transformed it, besides of raw cleaned and normalized data, with custom business logic, and tables aggregation to further analyze and exploit more from data.
 - This process usually referred to *ELT* or *transformation* that is not the same *transformation* in ingestion process, which is just controling data quality by casting type, formatting date/timestamp or mapping data into specified schema by a framework.
 - Transformed data models can be located in *curate* or *gold* layer in *medallion architecture*, but sometimes can be in *semantic layer* which is referred to another transformation sub-layer before being shown on dashboard. However, this depends on companies' data archietcture and agreement between teams.
-![semantic-concept](./src/Picture/semantic-concept.jpg)
+![semantic-concept](./docs/semantic-concept.jpg)
 - Transformation process can be done with SQL by analytic engineer, data analyst, domain expert, and etc. to make data become more meaningful to business aspect. However without proper expertise in SQL and data modeling, cost from dashboard usage and data preparation can be gone in a very wrong way.
 - Tools that support transformation at aggregation level is emerging, since ELT pattern is still counted as modern at the moment for batch data engineering pipeline. Some of famous tools you might have heard could be *dbt*, and *SQLMesh* which enable ability to perform complex incremental data loading logic, SCD handling, data lineage, data dict, and built-in data quality controlling at high level. However, you could still implement data aggregation with native airflow operator introduced by official provider by executing sql directly to data warehouse through Airflow.
 
@@ -744,9 +744,9 @@ Before we put the customer profile data into KMeans, we should scale the data fi
 
 Then, we will use KMeans to segment customers into clusters. We will use **Elbow Method** and **Silhouette Plot** to find the optimal number of clusters which eventually is 10 clusters.
 
-<img src="./src/Picture/kmeans-elbow.png" alt="kmeans-elbow" width="75%">
+<img src="./docs/kmeans-elbow.png" alt="kmeans-elbow" width="75%">
 
-![kmeans-silhouette](./src/Picture/kmeans-silhouette.png)
+![kmeans-silhouette](./docs/kmeans-silhouette.png)
 
 Then, we label the clusters to customer profile table which not scaled yet, so we can see the customer profile of each cluster with the original scale to make it more interpretable. We will use this table to find the criteria of the clusters as an input and validation set for the Decision Tree.
 
@@ -758,7 +758,7 @@ References:
 
 After that, we will use **Decision Tree** to find the criteria of the clusters to make the clustering result from KMeans become interpretable. I used **Random Search** with **Cross Validation** to find the best hyperparameters of the Decision Tree to make it the most accurate **resulting in accuracy 91.41% on test set, 94.11% on train set, macro averaged of F1 score 0.75, to clarify criteria of each cluster.**
 
-![kmeans-tree](./src/Picture/kmeans-tree.png)
+![kmeans-tree](./docs/kmeans-tree.png)
 
 ***Note: The 91% accuracy doesn't mean we segmented the customers correctly by 91%**, because we can't be sure that Kmeans correctly 100% segmented the customers (and definitely, it didn't), but we can tell that the Decision Tree can explain the criteria of the clusters correctly by 91% in generalization, So we can take account of the criteria from the Decision Tree to cluster customer segmented to follow Kmeans result.*
 
@@ -774,7 +774,7 @@ References:
 
 The most important features for each cluster can be shown in the plot below:
 
-<img src="./src/Picture/permutation_feature_importance.png" alt="permutation_feature_importance" width="75%">
+<img src="./docs/permutation_feature_importance.png" alt="permutation_feature_importance" width="75%">
 
 Finally we can classify the customers into 10 clusters and explain the criteria of each cluster to the business.
 - **Cluster 0** : Bought less, not often, and small ticket size, I think this is a cluster of casual customers or one-time purchase customers.
@@ -853,15 +853,15 @@ Therefore, we have to perform feature engineering, transform data, create featur
 
 But how can we know how much lag of the features and how many rolling window statistics should we use? first we can use **Auto-correlation** to find the optimal lag value or candidates to be used as lag features. Then, we can use **Cross-Validation** to find the optimal number of rolling window and the best candidate of lag features.
 
-<img src="./src/Picture/autocorrelation.png">
+<img src="./docs/autocorrelation.png">
 
 Additionally, I used **Fast Fourier Transform** to find seasonality of the data, which is the pattern that repeats itself at regular intervals of time. The seasonality can be used to create features to predict the future sales.
 
-<img src="./src/Picture/fourier.png" width="75%">
+<img src="./docs/fourier.png" width="75%">
 
 Personally, I thought using fast fourier transform to find seasonality is quite more quantitative than using autocorrelation. But, we can use both of them to find the seasonality of the data to ensure the result.
 
-![predict-demand](./src/Picture/predict-demand.png)
+![predict-demand](./docs/predict-demand.png)
 
 I think the most challenging part of timeseries forecasting is to find the appropriate features to predict the future sales. The features that we use to predict the future sales should be the features that already happened in the past, and we can't use the features that will happen in the future. So, checking how much lagged values of the features can be significant to predict the future sales.
 
@@ -902,7 +902,7 @@ After we developed and evaluated the model, we can deploy the model to productio
 
 We can deploy the model to production in many approaches, please refer to this repo: [MLOps - ML System](https://github.com/patcha-ranat/MLOps-ml-system) for further details of principles and research on *MLOps* methodology. However, most approaches required *docker container* for consistent runtime even in different environments, so I will elaborate more on containerization for this topic.
 
-![deploy-overview](./src/Picture/deploy-overview.png)
+![deploy-overview](./docs/deploy-overview.png)
 
 ***Due to latest revise (Nov 2024), I decided to re-write this from [the previous version of this chapter](https://github.com/patcha-ranat/Ecommerce-Invoice-End-to-end/blob/7f57532552d5c948054753bbc0877d370cafd200/README.md#6-model-deployment-and-monitoring) into a new one, emphasizing less on typical concepts and focusing more on specific use case for this project. However, considering how huge scale of this project was, I also intended to separate this chapter into [MLOps - ML System](https://github.com/patcha-ranat/MLOps-ml-system?tab=readme-ov-file#mlops---ml-system) project to clarify more on my most interested topic in detail.***
 
@@ -911,10 +911,10 @@ We can deploy the model to production in many approaches, please refer to this r
 Although this project introduced multiple ML use cases, I choose [Customer Segmentation By RFM, KMeans, and Tree-based Model](#51-customer-segmentation-by-rfm-kmeans-and-tree-based-model) to be deployed with *precompute serving pattern*, so there's no model wrapped into a container or prediction API service, just ML Pipeline within docker container deployed with CI/CD Pipeline.
 
 *MLOps Code Structure and Logic*
-![kde-ecomm-mlops-code-structure](./src/Picture/kde-ecomm-mlops-code-structure.png)
+![kde-ecomm-mlops-code-structure](./docs/kde-ecomm-mlops-code-structure.png)
 
 *MLOps Code Workflow*
-![kde-ecomm-mlops-code-workflow](./src/Picture/kde-ecomm-mlops-code-workflow.png)
+![kde-ecomm-mlops-code-workflow](./docs/kde-ecomm-mlops-code-workflow.png)
 
 ### 6.1 Exporting from Notebook
 
@@ -924,7 +924,7 @@ First, we will focus on extracting the model development processes from notebook
 - Selecting K Value
     - Since now we can't consider optimal k value qualitatively by human through automated pipeline, clarifying logic/rules to find optimal K now become important.
     - Here is the logic represented in math:
-    ![dynamic_k_equation](./src/Picture/dynamic_k_equation.png)
+    ![dynamic_k_equation](./docs/dynamic_k_equation.png)
 - Model Development Changes
     - Changing feature engineering process imputing recency feature from `999` to the real recency
     - Replacing interpretation method from decision tree or xgboost feature importance with LightGBM and permutation feature importance for more interpretable and quantitative measurement.
@@ -1035,7 +1035,7 @@ For the sake of this topic and the next, please add this following roles for suf
 - **Service Account Token Creator**: *For account impersonation*
 - **Workload Identity User**: *For granting access from WIF to the service account*
 
-![deploy-access-example](./src/Picture/deploy-access-example.png)
+![deploy-access-example](./docs/deploy-access-example.png)
 
 In the previous Terraform section, the steps are introduced to use '*static credentials*', loaded from cloud to local machine, to authenticate with GCP. But in this revised version, I will use *Application Default Credentials (ADC)* impersonated with a service account to authenticate between Terraform and GCP.
 - *ADC* is a method to authenticate to GCP interactively through CLI via *gcloud*. It's a proper authentication method when there's human involved between the processes, but impossible with automated pipeline.
@@ -1134,11 +1134,11 @@ Reference:
 
 When we make changes on the app service, we certainly need to re-deploy it to the cloud environment with a newer version for improvement on production. But, we don't want to do it manually every time, especially on production environment, which can cause error-prone and time-consuming process. So, this come to the important of automating the deployment process or CI/CD Workflow. CI/CD Pipeline make sure your developed application is well-maintained, qualified with tests, and deploy securely in predictable way without error-prone issue.
 
-![cicd-workflow-trigger-example](./src/Picture/cicd-workflow-trigger-example.png)
+![cicd-workflow-trigger-example](./docs/cicd-workflow-trigger-example.png)
 
 *Github Actions (GHA)* is one of many CI/CD tools that we can use to automate the deployment process. It can automate tasks when we manually trigger it or with specific events we specified as its condition within the workflow. For example, we can automate the deployment process when we push on specific branch or create pull request with a certain branch to the repository.
 
-![cicd-workflow-example](./src/Picture/cicd-workflow-example.png)
+![cicd-workflow-example](./docs/cicd-workflow-example.png)
 
 GHA workflow and code logic is not different from manual deployment process, including installing gcloud, authentication, building docker image from source code in GitHub, and pushing to specified image registry, except we can do this all processes with a few click. However, GHA workflow has its own syntax and some specific feature such as using pre-defined action, and accessing variables and GitHub default variables which make it a bit more complicated than regular bash command such as:
 

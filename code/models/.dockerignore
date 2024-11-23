@@ -4,3 +4,8 @@ db/*db
 
 # code
 *.ipynb
+terrafrom*
+test*
+
+# etc
+__pycache__
