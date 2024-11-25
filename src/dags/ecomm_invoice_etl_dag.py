@@ -1,12 +1,11 @@
 from airflow import DAG
+from airflow.models import Variable
 # from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateExternalTableOperator
 from airflow.providers.amazon.aws.transfers.s3_to_redshift import S3ToRedshiftOperator
-from datetime import datetime
 from airflow.utils import timezone
-from datetime import timedelta
 import requests
 from kaggle.api.kaggle_api_extended import KaggleApi
 import os
@@ -17,16 +16,16 @@ import logging
 from transform_load import clean_data_google, load_data_google, clear_staging_area, load_data_google_autodetect
 from alternative_cloud_etl import extract_api_aws, extract_url_aws, extract_database_aws, clean_aws, load_data_aws
 
-# get variables from .env file
-project_id = os.environ["PROJECT_ID"]
-gcp_bucket = os.environ["BUCKET_NAME"]
-dataset_name = os.environ["DATASET_NAME"]
-table_name = os.environ["TABLE_NAME"]
+# get variables from variables.json file
+project_id = Variable.get("project_id")
+gcp_bucket = Variable.get("gcs", deserialize_json=True).get("landing")
+dataset_name = "dataset_name"
+table_name = "table_name"
 credentials_path = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
 load_target_file = "ecomm_invoice_transaction.parquet"
 
 aws_credentials_path = os.environ["AWS_CREDENTIALS_PATH"]
-aws_bucket = os.environ["AWS_BUCKET"]
+aws_bucket = Variable.get("s3")
 
 
 def extract_url_google():

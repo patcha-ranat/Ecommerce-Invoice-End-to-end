@@ -1,18 +1,19 @@
-from kaggle.api.kaggle_api_extended import KaggleApi
 import os
-import shutil
-import tempfile
+import logging
+
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.models import Variable
+
+from kaggle.api.kaggle_api_extended import KaggleApi
 import boto3
 import pandas as pd
 import requests
-from airflow.providers.postgres.hooks.postgres import PostgresHook
 import awswrangler as wr
-import logging
 import psycopg2
 import zipfile
 
 aws_credentials_path = os.environ["AWS_CREDENTIALS_PATH"]
-aws_bucket = os.environ["AWS_BUCKET"]
+aws_bucket = Variable.get("s3")
 _redshift_host = ''
 _redshift_role_arn = ''
 

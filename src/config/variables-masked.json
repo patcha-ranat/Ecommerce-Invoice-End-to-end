@@ -1,10 +1,11 @@
 {
-    "project_id": "XXX",
-    "region": "XXX",
+    "project_id": "XXX-GCP-pproject-name",
+    "region": "XXX-GCP-region",
     "gcs": {
         "landing": "XXX_landing_bucket_name",
         "staging": "XXX_staging_bucket_name",
         "curate": "XXX_curate_bucket_name"
     },
-    "gar_repo": "XXX_Artifact_registry_repo_name"
+    "gar_repo": "XXX_Artifact_registry_repo_name",
+    "s3": "XXX-aws-bucket-name"
 }
