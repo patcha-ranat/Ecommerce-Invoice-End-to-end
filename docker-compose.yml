@@ -8,14 +8,11 @@ x-airflow-common:
   env_file: 
     - ./airflow.properties
   environment:
-    # GOOGLE_APPLICATION_CREDENTIALS: /.config/gcloud/application_default_credentials.json
     GOOGLE_APPLICATION_CREDENTIALS: /gcp/gcloud/application_default_credentials.json
-    # GOOGLE_APPLICATION_CREDENTIALS: /root/.config/gcloud
     GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
     CLOUDSDK_CORE_PROJECT: ${GOOGLE_CLOUD_PROJECT}
     GCP_REGION: ${GCP_REGION}
-    # CLOUDSDK_CONFIG: /.config/gcloud
-    # LOCAL_MOUNTS: ${APPDATA}/gcloud
+    AWS_CREDENTIALS_PATH: /opt/airflow/credentials/${AWS_CREDENTIALS_FILENAME}
   entrypoint: ./airflow-entrypoint.sh
   volumes:
     - ./src/dags:/opt/airflow/dags
@@ -23,10 +20,12 @@ x-airflow-common:
     - ./src/plugins:/opt/airflow/plugins
     - ./src/config:/opt/airflow/config
     # airflow-GCP ADC
-    # - ${APPDATA}/gcloud/application_default_credentials.json:/.config/gcloud/application_default_credentials.json
     - ${APPDATA}/gcloud:/gcp/gcloud
     - ./airflow-entrypoint.sh:/opt/airflow/airflow-entrypoint.sh
-    # - ${APPDATA}/gcloud:/root/.config/gcloud
+    # airflow-kaggle auth
+    - ./credentials/kaggle.json:/home/airflow/.kaggle/kaggle.json
+    # airflow-AWS
+    - ./credentials:/opt/airflow/credentials
     # for docker operator requied docker sesseion on local
     - //var/run/docker.sock:/var/run/docker.sock
 
