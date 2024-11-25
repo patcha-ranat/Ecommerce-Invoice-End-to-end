@@ -11,10 +11,12 @@ Call Docker Image from GAR and execute with airflow parameter
 4. Write Output
 """
 
+import os
 from datetime import datetime, timedelta
 from airflow import models
 from airflow.operators.empty import EmptyOperator
 from airflow.providers.docker.operators.docker import DockerOperator
+from docker.types import Mount
 
 
 # DAG Attributes
@@ -28,10 +30,16 @@ GCS: dict = models.Variable.get("gcs", deserialize_json=True)
 
 # DAG Config
 default_config: dict = {
-    "image": "interpretable-dynamic-rfm-service:v2"
+    "image": "ecomm/interpretable-dynamic-rfm-service:v5"
 }
 
+# tasks config
 image_id = f"{REGION}-docker.pkg.dev/{PROJECT_ID}/{GAR_REPO}/{default_config.get('image')}"
+data_file_name = "ecomm_invoice_transaction.parquet"
+execution_date = '{{ ds }}'
+# Mount GCP ADC
+localhost_path = "/run/desktop/mnt/host/c/Users/HP/AppData/Roaming/gcloud" # change this to match tester's host OS
+docker_in_docker_path = "/root/.config/gcloud"
 
 
 default_dag_args: dict = {
@@ -52,22 +60,52 @@ with models.DAG(
 ) as dag:
     start_task = EmptyOperator(task_id="start")
 
-    segment_task = DockerOperator(
-        task_id="segment",
+    ml_segment_service_task = DockerOperator(
+        task_id="ml_segment_service",
+        docker_url="unix://var/run/docker.sock",
         image=image_id,
-        # mounts=,
-        auto_remove=True,
+        environment={
+            "GOOGLE_CLOUD_PROJECT": PROJECT_ID
+        },
+        mounts=[
+            Mount(
+                source=localhost_path,
+                target=docker_in_docker_path,
+                type="bind"
+            )
+        ],
+        mount_tmp_dir=False,
+        auto_remove="force",
         command=[
             "--env", "gcp", 
             "--project_id", PROJECT_ID,
             "--method", "filesystem", 
-            "--input_path", f"gs://{GCS.get('landing')}/input/data/{{{{ ds }}}}/ecomm_invoice_transaction.parquet", 
+            "--input_path", f"gs://{GCS.get('landing')}/input/data/{execution_date}/{data_file_name}", 
             "--output_path", f"gs://{GCS.get('staging')}/output", 
-            "--exec_date", "{{ ds }}"
+            "--exec_date", execution_date
         ]
     )
+
+    # Test: Keep DockerOperator's container run, to be able to check mounted directories
+    # segment_task = DockerOperator(
+    #     task_id="ml_service_debug_container",
+    #     docker_url="unix://var/run/docker.sock",
+    #     image=image_id,
+    #     timeout=300,
+    #     auto_remove="never",
+    #     entrypoint=["tail", "-f", "/dev/null"],
+    #     command=[],
+    #     mounts=[
+    #         Mount(
+    #             source="/",
+    #             target="/test_mount",
+    #             type="bind"
+    #         )
+    #     ],
+    #     mount_tmp_dir=False,
+    # )
 
     end_task = EmptyOperator(task_id="end")
 
     # DAG Dependency
-    start_task >> segment_task >> end_task
+    start_task >> ml_segment_service_task >> end_task
