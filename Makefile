@@ -18,3 +18,6 @@ airflow-import:
 	&& airflow variables import config/variables.json \
 	&& airflow connections import config/connections.json \
 	&& exit
+
+test:
+	PYTHONPATH="code/models" pytest tests/unit/test_ml_services.py --disable-pytest-warnings

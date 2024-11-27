@@ -3,165 +3,199 @@
 ```text
 Click "⋮≡" at top right to show the table of contents.
 ```
-**End-to-end Data project** in the e-commerce and retail industries covering the full process of data exploitation, including Data Engineering skills, Data Science skills, and Data Analytic skills, and how to automate ML lifecycle management (MLOps).
-
-***Disclaimer**: This documentation not only focused on outcomes, but also explained concepts and details for reproduction*
+**End-to-end Data project** in the e-commerce and retail industries covering the full process of data exploitation, including Data Engineering, Data Science, Data Analytic, and how to automate ML deployment (MLOps).
 
 ## **Context**
 
-It's crucial in nowadays to emphasize data existing and make the most use of it. **The project was created to practice and demonstrate the full process of data exploitation** covering setting up environments, ETL process, Web Scraping, Data Visualization, Machine Learning Model Development, and Model Deployment using E-commerce data.
+It's crucial in nowadays to emphasize data existing and make the most use of it. **The project was created to practice and demonstrate the full process of data exploitation** covering setting up local environments, cloud infrastructure, ETL pipelines, Data Visualization, Machine Learning Model Development, and Model Deployment using E-commerce data.
 
 ## **Table of Contents**:
-*(latest revised: July 2023, Aug 2023, Oct 2024, Nov 2024)*
-1. [Setting up Environment](#1-setting-up-environment)
+*(latest revised: July 2023, Aug 2023, Oct 2024, 14 Nov 2024, 25 Nov 2024)*
+1. [Setting up Local Environment](#1-setting-up-local-environment)
     - 1.1 [Setting up Overall Services (containers)](#11-setting-up-overall-services-containers)
-2. [ETL (Extract, Transform, Load): Writing DAGs and Managing Cloud Services](#2-etl-process-writing-dags-and-managing-cloud-services)
-    - 2.1 [Setting up Data Lake, and Data Warehouse](#21-setting-up-data-lake-and-data-warehouse)
-        - [**Terraform**](#terraform)
-    - 2.2 [Setting up DAG and Connections](#22-setting-up-dag-and-connections)
-    - 2.3 [Triggering DAG and Monitoring](#23-triggering-dag-and-monitoring)
-    - [Step to Reproduce Virtualization for Testing](#step-to-reproduce-virtualization-for-testing)
-    - 2.4 [Extending to AWS](#24-extend-to-aws)
-        - [Terraform for AWS](#terraform-for-aws)
-    - 2.5 [Detail of the ETL Code](#25-detail-of-the-etl-code)
-    - 2.6 [**Airflow DAGs and Data warehouse in Production**](#26-airflow-dags-and-data-warehouse-in-production)
-<!-- 3. [Web Scraping](#3-web-scraping) -->
-3. Web Scraping
+    - 1.2 [Checking Docker Results](#12-checking-docker-results)
+    - 1.3 [Setting up Airflow Properties](#13-setting-up-airflow-properties)
+2. [**Setting up Cloud Infrastructure and Authentication**](#2-setting-up-cloud-infrastructure-and-authentication)
+    - 2.1 [Setting IAM and Airflow Connections](#21-setting-iam-and-airflow-connections)
+        - 2.1.1 [Setting up IAM and Service Account](#211-setting-up-iam-and-service-account)
+        - 2.1.2 [Account Impersonation](#212-account-impersonation)
+        - 2.1.3 [Setting up Airflow Connections and Variables](#213-setting-up-airflow-connections-and-variables)
+        - 2.1.4 [Airflow Entrypoint](#214-airflow-entrypoint)
+    - 2.2 [Authentication](#22-authentication)
+        - 2.2.1 [Long-lived credentials method vs others](#221-long-lived-credentials-method-vs-others)
+        - 2.2.2 [GCP ADC for Terraform](#222-gcp-adc-for-terraform)
+        - 2.2.3 [GCP ADC for pipeline code](#223-gcp-adc-for-pipeline-code)
+    - 2.3 [Terraform](#23-terraform)
+    - 2.4 [Extending Terraform to AWS](#24-extending-terraform-to-aws)
+3. [DAGs and ETL Pipelines](#3-dags-and-etl-pipelines)
+    - 3.1 [**Airflow DAGs and Data warehouse in Production**](#31-airflow-dags-and-data-warehouse-in-production)
+    - 3.2 [**Data Modeling and Optimization in Production**](#32-data-modeling-and-optimization-in-production)
+    - 3.3 [**How to Optimize Data Models**](#33-how-to-optimize-data-models)
 4. [EDA and Data Visualization](#4-eda-and-data-visualization)
     - 4.1 [EDA](#41-eda)
     - 4.2 [PowerBI Dashboard](#42-powerbi-dashboard)
-    - 4.3 [**Data Modeling and Optimization in Production**](#43-data-modeling-and-optimization-in-production)
-        - [How to Optimize Data Models](#how-to-optimize-data-models)
 5. [Machine Learning Model Development](#5-machine-learning-model-development)
     - 5.1 [Customer Segmentation By RFM, KMeans, and Tree-based Model](#51-customer-segmentation-by-rfm-kmeans-and-tree-based-model)
     - 5.2 [Market Basket Analysis](#52-market-basket-analysis)
     - 5.3 [Demand Forecasting](#53-demand-forecasting)
-    - 5.4 Recommendation System
-    - 5.5 Customer Churn Prediction
-    - 5.6 Price Analysis and Optimization
-    <!-- - 5.4 [Recommendation System](#54-recommendation-system) -->
-    <!-- - 5.5 [Customer Churn Prediction](#55-customer-churn-prediction) -->
-    <!-- - 5.6 [Price Analysis and Optimization](#56-price-analysis-and-optimization) -->
 6. [**ML Code Productionization and Deployment**](#6-ml-code-productionization-and-deployment)
     - 6.1 [Exporting from Notebook](#61-exporting-from-notebook)
     - 6.2 [Docker Containerization](#62-docker-containerization)
     - 6.3 [Deploying the Model to the Cloud Environment](#63-deploying-the-model-to-the-cloud-environment)
-    - 6.4 [CI/CD Workflow - Automated Deployment Process](#64-cicd-workflow-automated-deployment-process)
+    - 6.4 [Unit Test, Pre-commit, and Linting](#64-unit-test-pre-commit-and-linting)
+        - 6.4.1 [Pre-commit and Linting](#641-pre-commit-and-linting)
+        - 6.4.2 [Unit Test](#642-unit-test)
+    - 6.5 [CI/CD Workflow - Automated Deployment Process](#65-cicd-workflow---automated-deployment-process)
+        - 6.5.1 [Github Actions - Secrets Variable and Authentication](#651-github-actions---secrets-variable-and-authentication)
+        - 6.5.2 [Workload Identity Federation Debugging](#652-workload-identity-federation-debugging)
+    - 6.6 [ML Service Integration Test](#66-ml-service-integration-test)
 7. [Conclusion](#7-conclusion)
-
-*Disclaimer: The project is not fully finished, but covered all the parts available as links above.*
+8. [Appendix](#8-appendix)
 
 ## **Project Overview**
 
 ![project-overview](./docs/project-overview.png)
 
-## **Tools**:
-- Sources
-    - Postgres Database (Data warehouse)
-    - REST API (raw file url)
-    - API (with token)
-- Data Lake & Staging Area
-    - Google Cloud Storage
-    - AWS S3
-- Data Warehouse
-    - Postgres Database
-    - Bigquery (External and Native Tables)
-    - Redshift
-- Orchestrator
-    - Airflow
-- Virtualization and Infrastucture management
-    - Docker compose
-    - Terraform
-- EDA & Visualization
-    - PowerBI (Desktop and Service)
-    - Python (Jupyter Notebook)
-- Machine Learning Model Development
-    - Python
-- Model Deployment
-    - Docker
-    - Artifact Registry
-    - Workload Identity Federation (Keyless Authentication)
-    - Github Actions (CI/CD)
-
 Dataset: [E-Commerce Data - Kaggle](https://www.kaggle.com/datasets/carrie1/ecommerce-data)
 
 ## Prerequisites:
-- Get a credentials file from kaggle and activate the token for API.
-- Have Google Account being able to use google cloud services.
-- Docker Desktop
 - Python
+- Docker Desktop
+- Terraform (+Add to `$PATH`)
+- Available GCP account to enable google cloud services.
+- [gcloud (GCP SDK)](https://cloud.google.com/sdk/docs/install)
+- Credential File for AWS as `.csv`
+- Credential file from kaggle with activated token for API.
 
-*Although `.env` file is push to the repository, sensitive data and the credentials are hidden in by `.gitignore`*
+*The credentials are hidden from repo in by `.gitignore`*
 
-## 1. Setting up Environment
+## 1. Setting up Local Environment
 
-![setting-overview](./docs/setting-overview.png)
+Clone this repository to obtain all neccessary files, then use it as root working directory.
 
-Firstly, clone this repository to obtain all neccessary files, then use it as root working directory.
 ```bash
-git clone https://github.com/Patcharanat/ecommerce-invoice
+git clone https://github.com/patcha-ranat/Ecommerce-Invoice-End-to-end.git
 ```
-We need to set up local environment with docker to perform ETL process, which basically including:
-- Postgres database
-- Airflow
 
-Since the pipelines might need to be run in different environment not just on your machine, it's essential to make sure that your code can be packaged and run in anywhere or orchestrated by different tools for further scaling up. Developing and testing your code to perform ETL/ELT processes in a **Docker** container is essential. **Docker Compose** make it possible to do it, orchestraing multiple containers (and maybe built by different images) with a lightweight approach simulating running on different environment. 
+Create all hidden files from repo in order to reproduce:
+- `credentials/<aws-credentials>.csv`
+- `credentials/kaggle.json`
+- `src/config/variables.json`, please change as needed referred to [variables-masked.json](./src/config/variables-masked.json)
+- `.env` using this template
+    ```shell
+    # GCP
+    GOOGLE_CLOUD_PROJECT=<your-gcp-project>
+    GCP_REGION=<your-gcp-region>
 
-Usually, we don't use docker compose in production, but it is lightweight and easy enough to enable you to run and test your code on local machine. However, packing your code as a docker image is still the way to go for production scale pipeline, specifically for *Kubernetes* as an example.
+    # AWS
+    AWS_CREDENTIALS_FILENAME=<aws-credentials-filename>.csv
+    AWS_BUCKET=<your-aws-bucket-name>
+    ```
+- `terraform/terraform.tfvars`
+    ```bash
+    # aws credentials
+    aws_access_key = "XXX"
+    aws_secret_key = "XXX"
+
+    # serverless redshift
+    ##########################
+    # Application Definition # 
+    ##########################
+    # app_name        = "XXX" # Do NOT enter any spaces
+    app_environment = "dev" # Dev, Test, Staging, Prod, etc
+
+    #########################
+    # Network Configuration #
+    #########################
+    redshift_serverless_vpc_cidr      = "10.0.0.0/16"
+    redshift_serverless_subnet_1_cidr = "10.0.1.0/24"
+    redshift_serverless_subnet_2_cidr = "10.0.2.0/24"
+    redshift_serverless_subnet_3_cidr = "10.0.3.0/24"
+
+    ###################################
+    ## Redshift Serverless Variables ##
+    ###################################
+    # redshift_serverless_namespace_name      = "xxx-namespace"
+    # redshift_serverless_database_name       = "xxxdb"
+    # redshift_serverless_admin_username      = "XXX"
+    # redshift_serverless_admin_password      = "XXX"
+    # redshift_serverless_workgroup_name      = "XXX-workgroup"
+    # redshift_serverless_base_capacity       = 32
+    # redshift_serverless_publicly_accessible = false
+    ```
+- `code/models/terraform/terraform.tfvars`
+    ```bash
+    project_id = "<GCP-Project-ID>"
+    service_account_email = "<Service-Account-Email>"
+    ```
+- `code/models/terraform/auth/terraform.tfvars`
+    ```bash
+    project_id = "<GCP-Project-ID>"
+    service_account_email = "<Service-Account-Email>"
+    ```
+
+Run the following commands:
+```bash
+# workdir: .
+
+# docker compose build
+
+# docker compose up
+
+docker compose up --build
+
+# check localhost:8080 via web browser
+
+# Ctrl+C
+
+# docker compose down -v
+
+# delete all local docker images via Docker UI
+```
+
+Since the pipelines might be needed to be run in different environment not just on local machine, it's essential to make sure that your code can be packaged and run in anywhere or be able to orchestrated by different tools such as *Kubernetes* for further scaling up. Developing and testing your code to perform ETL/ELT processes in a **Docker** container is essential. And with **Docker Compose**, it make it more convenience to orchestrate multiple containers, in which most of time are built by different images, with a lightweight approach. 
+
+Usually, we don't use docker compose in production, but it is lightweight and easy enough to allow you to run and test your code on local machine. However, packaging your code as a docker images is still the way to go for production scale pipeline, specifically for *Kubernetes* as an example.
+
+***Warnings: For this Repo. Don't deploy your images created from docker-compose to public***
 
 ### 1.1 Setting up Overall Services (containers)
 
-Open your docker desktop and execute bash command in terminal with your root working directory (in a clone repo) by:
+![setting-overview](./docs/set-env-overview.png)
 
-```bash
-docker compose build
-```
+From **"Setting Up Local Environment Overview"** image,
+1. Docker compose will copy raw data [data/uncleaned.csv](./data/uncleaned_data.csv), and [setup.sql](./setup.sql) to source postgres database container to mockup data source as DBMS. With the `setup.sql` as an entrypoint of the container, source postgres db will initiate table and load data into in. All the execution steps defined in [postgres.Dockerfile](./postgres.Dockerfile)
+2. Docker compose will copy [target.sql](./target.sql) to target postgres database container to mockup target database as DBMS. With the *target.sql* as an entrypoint of the container, target postgres db will initiate empty table waiting for ETL processes. All the execution steps defined in [postgres-target.Dockerfile](./postgres-target.Dockerfile)
+3. Docker compose will do the following:
+    1. Mount Volume of credentials (GCP-ADC, AWS, and Kaggle) to airflow scheduler and webserver containers. And it also mount necessary components for airflow such as `logs` folder, [src/config/variables.json](./src/config/variables-masked.json), and [src/config/connections.json](./src/config/connections.json) which will be clarified more on Topic 2: *Setting up Cloud Infrastructure and Authentication*
+    2. Mount [airflow-entrypoint.sh](./airflow-entrypoint.sh) to airflow scheduler and webserver containers and use it as entrypoint to import  mounted [variables.json](./src/config/variables-masked.json) and [](./src/config/connections.json) in runtime at first start. The step that related to authentication also will be explained in Topic 2.
+    3. Use [airflow.properties](./airflow.properties) to configure Airflow Containers' environment variables (act as `.env` file in airflow containers)
+    4. install airflow python dependencies specified in [requirements.txt](./requirements.txt) executed by [airflow.Dockerfile](./airflow.Dockerfile). Setting up gcloud also will be explained in Topic 2.
+     
+#### Explaination Note
 
-This command will build all containers we specified in [docker-compose.yml](./docker-compose.yml) file, especially in `build` and `context` parts which do following tasks:
-- Copying [setup.sql](./setup.sql) script to `docker-entrypoint-initdb.d` path in a container to be executed when we initialize the session.
-- Copying [cleaned_data.csv](./data/cleaned_data.csv) file to the postgres container as an mock-up source database.
-- Creating schema and table with `cleaned_data.csv` by executing `setup.sql` within the container.
-- Replicating postgres container to simulate another database for data warehouse with empty table using `postgres-target.Dockerfile`, and `target.sql` file.
-- Installing `requirements.txt` for airflow's container to be able to use libraries we needed in DAGs.
-- Add a Kaggle credentials file: `kaggle.json` (in this case we use Kaggle API) to make API usable.
-
-**Note**
-- `docker compose build` is creating container(s), following specification within `Dockerfile` file type specified in `docker-compose.yml` of how it should be built, in your local machine, but it's still not spinning up.
-
-**Debugging Note**
-- you may fail to run the command because you may not have google cloud credentials as a json file in your local. You can skip to [Step 2.1: Setting up Data Lake, and Data Warehouse](#step-21-setting-data-lake-and-data-warehouse) in ***Service account*** part to get your own google crendentials json file and put it in `credentials` folder. After that you can try running `docker compose build` again.
-- Don't forget to get `Kaggle.json` credentials, and add to `credentials` folder also.
-
-**Reproducing Note**
-- First, you need to simulate postgres database by creating a container with postgres image. you will need to copy `cleaned_data.csv` file into the postgres container. Then, you need to create a database and a schema, and a table with [`setup.sql`](setup.sql) file, and also configure [`.env`](.env) file, like username, password, and database. The file that will do the copying file task is [`postgres.Dockerfile`](postgres.Dockerfile)
-- We added another postgres container to simulate target database. The files that are relevant to this task are [`postgres-target.Dockerfile`](postgres-target.Dockerfile) to build image for the container and [`target.sql`](target.sql) to setup empty table. In this database, we will use different database name and different schema for testing how to handle with multiple databases.
-- Then, you need to create a container with airflow image. You will need to copy `kaggle.json` file into the container (webserver, and scheduler). Then, you need to install libraries we needed in DAGs by **"pip install"**[`requirements.txt`](requirements.txt) file within the containers. The file that will do the task is [`airflow.Dockerfile`](airflow.Dockerfile)
-- Then, you need to create a container with airflow image. You will need to copy `kaggle.json` file into the container (webserver, and scheduler). Then, you need to install python dependencies we needed in DAGs by `pip install -r`[`requirements.txt`](requirements.txt) file within the containers. The file that will do the task is [`airflow.Dockerfile`](airflow.Dockerfile)
-- To easily run multiple docker containers or running microservices, you will need docker compose. The file that will do the task is [`docker-compose.yml`](docker-compose.yml), which will `build` all the images for containers we specified in `build` and `context` parts resulting in running different `.Dockerfile` for different containers.
+- Docker Compose file [docker-compose.yml](./docker-compose.yml) orchestrated all the processes above. It can indicate how images should be built by specifying different `Dockerfile`(s) in `build` section and `context` section that's relative to `docker-compose.yml` file.
+- To execute entrypoint commands, you can use `entrypoint` section in `docker-compose.yml` file using shell script. However, it's different for `.sql` script. To execute `.sql` script as entrypoint in postgres database containers, you have to copy (or mount) the script to `/docker-entrypoint-initdb.d` directory, and it will execute automatically while the container spinning up (initializing docker session).
+- You may notice that in `docker-compose.yml` file using `${VARIABLE_NAME}` that referred to variables specified in `.env` file. The `.env` file export environment variables ***(env var)*** specified in the file for local machine during docker compose runtime, operating separately from `airflow.properties` which export *env var* in airflow containers during runtime.
 
 In airflow official site, you will find [`docker-compose.yml`](https://airflow.apache.org/docs/apache-airflow/stable/docker-compose.yaml) template to run airflow you can use it as reference and change it to fit your needs, like adding postgres section, and remove unnecessary part that can causes running out of memory making you unable to run docker containers successfully.
 
-If you're new to container, you will be confused a little with using path. please be careful with paths where you mount the files to.
-
-### 1.2 Intializing all Containers
-Initialize docker container(s) and run process in background (Detach mode)
-
-```bash
-docker compose up -d
-```
+### 1.2 Checking Docker Results
 
 ***Note:** some services need time to start, check container's logs from **docker desktop UI** or `docker ps` to see if the services are ready to work with.*
 
-<img src="./docs/docker-ps.jpg">
+![docker-ps](./docs/docker-ps.png)
 
-### 1.3 Checking if all Dockerfiles correctly executed
 What's needed to be checked are
+- Are the files are mounted/copied to target path correctly?
+    - `kaggle.json`
+    - `ecomm-invoice-kde-aws-iam_accessKeys.csv`
+    - `setup.sql`
+    - `cleaned_data.csv`
+    - `target.sql`
 - Is the data table in postgres database as a source created correctly?
     - data loaded from `cleaned_data.csv` and using the right schema?
-- Is all the credentials file imported?
-    - `kaggle.json`
-    - `gcs_credentials.json`
-    - `ecomm-invoice-kde-aws-iam_accessKeys.csv`
+
 - Is the data table in postgres database as a target created correctly?
     - empty table with the right schema?
 
@@ -172,32 +206,25 @@ docker exec -it <container-name-or-id> bash
 
 *Note: You can get container's name or id from `docker-compose.yml` or from `docker ps` command.*
 
-At this step, we can check if csv file we meant to execute in Dockerfile is executed successfully by:
-```bash
-ls
-ls data/
-ls docker-entrypoint-initdb.d/
-```
+![dockerfile-executed](./docs/dockerfile-executed.png)
 
-you should see the data csv file and `setup.sql` file in the directory.
+#### Checking Data in a Database
 
-<img src="./docs/dockerfile-executed.jpg">
-
-What you should check more is that credentials file: `kaggle.json` correctly imported in airflow's scheduler and webservice containers.
-
-### 1.4 Checking Data in a Database
 Access to both postgres containers, and then access database to check if csv file copied into table.
 ```bash
+# docker exec -it postgres-container-source bash
+
 psql -U postgres -d mydatabase
 ```
-Then we will be mounted into postgres' bash
 
-Then we will check table, and schema we executed by `setup.sql` file
 ```bash
-\dt or \d -- to see tables list
-\dn or \z -- to see schemas list
+# to see tables list
+\dt or \d
+
+# to see schemas list
+\dn or \z
 ```
-if we see table and schema are corrected and shown, then importing csv to the Postgres database part is done.
+if we see table and schema are corrected and shown, then we successfully importing csv to the Postgres database.
 
 <img src="./docs/check-postgres.jpg">
 
@@ -206,13 +233,12 @@ if not, these can be issues
 - check if data csv file and `setup.sql` are copied into docker container's local by using container's bash and check if path in `Dockerfile` and `setup.sql` were set correctly.
 - we need to set search_path by
 ```bash
+# to set only in current session. (reccomended)
 SET search_path TO <myschema>;
-```
-to set only in current session. *(reccomended)*
-```bash
+
+# to set permanently at database level
 ALTER DATABASE <mydatabase> SET search_path TO <myschema>; 
 ```
-to set permanently at database level.
 
 In postgres bash, we will be able to see only the table that match the schema we created. Hence, we have to change the schema to see the table in the database.
 
@@ -222,33 +248,19 @@ Then exit from all bash
 exit
 ```
 
-***Note:** In my lastest update adding another postgres databse to simulate data warehouse, I found that specifying image name in `docker-compose.ymal` file is crucial when we pulling the same image but using in different container, because it will `build` with the wrong `Dockerfile` and cause the some issues, like build postgres database target with `postgres.Dockerfile` instead of `postgres-target.Dockerfile` which is not what we want.*
+***Note:** Specifying image name or container name in `docker-compose.ymal` is crucial to not be the same between services if it are meant to be created with different steps, because it could `build` with the wrong `Dockerfile` and cause the some unexpected issues, such as create the image build postgres database target with source Dockerfile: `postgres.Dockerfile`, instead of `postgres-target.Dockerfile`*.
 
-### 1.5 Exiting
-Don't forget to remove all image and containers when you're done.
-```bash
-docker compose down -v
-```
+### 1.3 Setting up Airflow Properties
 
-and remove all images via `docker desktop`, we will initiate `docker compose build` and `docker compose up -d` again, when we want to test developed ETL code (test our airflow DAGs).
-
-<img src="./docs/docker-desktop.jpg">
-
-### 1.6 Setting up Airflow Web UI
-
-To set up airflow, we need to define more 4 services that refer to [official's .yml file template](https://airflow.apache.org/docs/apache-airflow/2.6.1/docker-compose.yaml) including `airflow-postgres` to be backendDB, `airflow-scheduler` to make scheduler, `airflow-webserver` to make airflow accessible via web UI, and `airflow-init` to initiate airflow session.
-
-<img src="./docs/airflow-ui.jpg" width="75%">
+To set up airflow locally, we need to define at least 4 services referred from [official's .yml file template](https://airflow.apache.org/docs/apache-airflow/2.6.1/docker-compose.yaml) including `airflow-postgres` to be airflow backend database, `airflow-scheduler` to execute task for `LocalExecutor`, `airflow-webserver` to make airflow accessible via web UI, and `airflow-init` to initiate overall airflow session.
 
 Understanding how every components in `docker-compose.yml` work make much more easier to comprehend and debug issues that occur, such as `depends-on`, `environment`, `healthcheck`, `context`, `build`, and storing object in `&variable`.
 
-***Note:*** In `yaml` file, identation is very important.
-
 **For this project**, we create 3 postgres containers, so we need to check carefully if airflow connected to its own backendDB or the right database.
 
-<details><summary>Issue debugged: for being unable to connect to airflow backendDB</summary>
-<p>
-Use this template from official's document in `.env` file:
+#### Issue debugged: for being unable to connect to airflow backendDB
+
+Use this template from official's document in `airflow.properties` file:
 
 ```python
 postgresql+psycopg2://<user>:<password>@<host>/<db>
@@ -262,88 +274,190 @@ postgresql+psycopg2://<user>:<password>@<host>/<db>
 AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
 ```
 
-</p>
-</details>
+***Note:*** In `airflow.properties` file, airflow core need *FERNET* key which can be obtained from [fernet.py](./fernet.py) (randomly generated)
 
-***Note:*** In `.env` file, airflow core need *FERNET* key which can be obtained from fernet.py (randomly generated)
+## 2. Setting up Cloud Infrastructure and Authentication
 
-## 2. ETL process: Writing DAGs and Managing Cloud Services
+To me, This part is quite complex compared with other topic considered by security-risk and utilizing different cloud services architecture. We will talk about these following topics:
 
-In this project, I used a dataset from kaggle which was:
-- loaded to postgres database
-- uploaded to this repo github as csv format
-- and I wrote DAGs to use Kaggle API to obtain the dataset directly from the Kaggle website.
+1. [Setting IAM and Airflow Connections](#21-setting-iam-and-airflow-connections)
+    1. [Setting up IAM and Service Account](#211-setting-up-iam-and-service-account)
+    2. [Account Impersonation](#212-account-impersonation)
+    3. [Setting up Airflow Connections and Varibles](#213-setting-up-airflow-connections-and-variables)
+    4. [Airflow Entrypoint](#214-airflow-entrypoint)
+2. [Authentication](#22-authentication)
+    1. [Long-lived credentials method vs others](#221-long-lived-credentials-method-vs-others)
+    2. [GCP ADC for Terraform](#222-gcp-adc-for-terraform)
+    3. [GCP ADC for pipeline code](#223-gcp-adc-for-pipeline-code)
+3. [Terraform](#23-terraform)
+4. [Extending Terraform to AWS](#24-extending-terraform-to-aws)
 
-<img src="./docs/etl-overview.png">
+### 2.1 Setting IAM and Airflow Connections
 
-If you use different dataset, you might have to write your own DAGs what match your specific use cases.
+### 2.1.1 Setting up IAM and Service Account
 
-### 2.1 Setting up Data Lake, and Data Warehouse
-As we will use GCP (Google Cloud Platform) for  Data Lake and Data Warehouse, we need to make our airflow script, which run in docker containers locally, being able to connect to GCP by using **google credentials** as known as a `service account` got from `IAM` section.
+Actually, it's available to retrieve ***Service Account (SA)*** with accesses via `gcloud` CLI or ***Terraform***, but I'd prefer to do this approach to reduce complexity for utilizing SA in further steps. So, we don't have to switch account email back and forth.
 
-**Service Account**
-
-Please follow this guideline:
-1. Go to your GCP project console with available access to manage cloud resources, and go to navigation menu (3-bar icon at top left), then go to `IAM & Admin` > `Service Accounts` > `Create Service Account` > Create your Service Account 
-2. In Service accounts section, click 3 dots at your newly created service account > `Manage keys` > `Add key` > `Create new key` > `JSON` > `Create` > `Download JSON` > `Close`, please keep your credentials (this json file) in safe place (must not be uploaded to anywhere public).
-3. You have to to specify the permission that you allow for that service account, like how much it can manage resources. What you need to do is:
-- Go to `IAM` page in `IAM & Admin` section > Edit principal for your created service account > Add Roles
-- Add the following roles:
-    - BigQuery Admin
-    - Storage Admin
-- And then, save your changes.
-
-***Caution**: if you want to add your project to github, make sure you are working in private repo, or add it to `.gitignore` file*
-
-Until now, you've finished getting service account credentials.
+Please, follow this guideline:
+1. Go to your GCP project console with available access to manage cloud resources, and go to navigation menu, then go to `IAM & Admin` > `Service Accounts` > `Create Service Account` > Create your SA and keep the email.
+2. You have to specify the permissions that you allow for that SA, like how much it can manage resources. What you need to do is:
+    - Go to `IAM` page in `IAM & Admin` section > Edit principal for your created service account > Add Roles
+    - For the sake of this topic and the next, please add these following roles for sufficient permissions:
+        - **Artifact Registry Administrator**: *For creating/deleting Artifact Registry object*
+        - **BigQuery Admin** : *To be able to manage BigQuery Resources*
+        - **IAM Workload Identity Pool Admin**: *For creating/deleting Workload Identity Federation (WIF) Pool*
+        - **Service Account Token Creator**: *For account impersonation*
+        - **Storage Admin** : *To be able to manage Cloud Storage (GCS) Resources*
+        - **Workload Identity User**: *To be able to authenticate via WIF*
+    - And then, save your changes.
+3. Also add **Service Account Token Creator** role to your owner account
 
 ![gcp-iam](./docs/gcp-iam.png)
 
-**Data Lake**
+### 2.1.2 Account Impersonation
 
-The next step is creating your Google cloud storage bucket. Go to `Cloud Storage` > `Create` > `Name your bucket` (which is *globally unique*)
-
-Then, choose the options that match you specific needs, the recommend are:
-- `Location type`: Region
-- `Storage Class`: Standard
-- Activate `Enforce public access prevention`
-- `Access control`: Uniform
-- `Protection tools`: None
-
-Click `Create`, and now you have your own data lake bucket.
-
-<img src="./docs/gcs-ui.jpg" width="75%">
-
-**Data Warehouse**
-
-The last step is creating your Bigquery dataset and table. In Bigquery (Google Data warehouse) you could have many projects, each project might have many datasets (most called *schema* for other OLAP databases), and each dataset might have many tables.
-
-Do the following to create your dataset and table:
-- Go to `Bigquery` > Click on 3-dot after your project name > `Create dataset` > `Name your dataset` (which is *unique* within the project) > `Create dataset`
-
-*(Recommend to choose location type that suit your region)*
-
-- Click on 3-dot after your created dataset > `Create table` > `Select your data source` (In this case, select empty table) > `name your table` > define schema > `Create table`
-
-Until now, you've finished creating your data warehouse that's ready to load our data in.
-
-<img src="./docs/bigquery-ui.jpg" width="75%">
-
-As you can see it's quite inconvenient that we have to create all of these resources manually via Google UI. So, we will use **Terraform** to create these resources in the next step.
-
-#### **Terraform**
-
-We can achieve creating the bucket, the dataset or table by **"Terraform"**, which is a better way to manage cloud resources reducing error-prone when reproducing the process. It's also proper for production stage with some additional concepts, we will discuss more on that later. you can see the code in `terraform` folder, consists of [main.tf](terraform/main.tf) and [variables.tf](terraform/variables.tf). Terraform make it easier to create, track stage, and delete the resources. In this demonstration, we enable it with a few bash commands.
-
-The [`main.tf`](./terraform/main.tf) file, using some variables from [`variables.tf`](./terraform/variables.tf) file, will produce the following resources:
-- 1 data lake bucket
-- 1 Bigquery dataset
-- 1 Bigquery table
-
-To use terraform, you need to install Terraform in your local machine (+add to PATH), and have your google credentials (service account credentials) as a json file within `credentials` directory located in the same level of your root working directory. Then, you can run terraform commands in your terminal **in your terraform working directory**.
+- For GCP, you can use your own account to interact with cloud resources directly, but in enterprise-scale project, there's will be some restriction to limit access of how someone can access or manage the resources due to security purpose.
+- Using **Impersonation** to SA allow your email to act as that SA email to interact with cloud resources with SA's access or permission. By this methodology, team can unify everyone's access to this SA or separate group access by multiple SAs. This can enhance security of cloud management and improve data governance of the company.
 
 ```bash
-# workdir: terraform/
+gcloud auth application-default login --impersonate-service-account <your-service-account-email>
+```
+
+### 2.1.3 Setting up Airflow Connections and Variables
+
+After we have proper permissions for the SA, we have to configure airflow to allow it authenticating with cloud through code. There's multiple ways to do it, like by configuring ADC, Secret as URI, or specifying long-lived credentials path. In this project, I will use the ADC method which will be elaborated on Topic 2.2.1: *Long-lived credentials method vs others*.
+- In many tutorials, you may find instructor to tell you how to configure airflow connections on Airflow Web UI, but in reality, we should keep it as code for versioning and reducing manual process as much as possible. this can be done by using *pre-defined connections* [connections.json](./src/config/connections.json)
+- Airflow Variables also operate in the same behavior to allow the code act differently between different stage of environments (dev/stg/prod) by specifying different variables for each stage. [variables.json](./src/config/variables-masked.json)
+- You can import connections and variables during airflow runtime by:
+    ```bash
+    docker exec -it <airflow-scheduler-container-name> bash
+
+    airflow variables import config/variables.json
+
+    airflow connections import config/connections.json
+
+    # You can also export both of it from manual configuration via Web UI
+    # airflow variables export config/variables-export.json
+    # airflow connections import config/connections-export.json
+    ```
+
+![airflow-connections](./docs/airflow-connections.png)
+![airflow-variables](./docs/airflow-variables.png)
+
+**Note:**
+- Path of `config/variables.json` and `config/connections.json` depends on mounted path from local machine or path we specified to copied it to in `Dockerfile`
+- If you used copying approach through `Dockerfile`, please note that the image would contain files that contain sensitive information, especially in `connections.json`, and can be dangerous to leak to public.
+- `google_cloud_default` is leave blank to use conenction from ADC, this method was explained by Airflow Official in reference link below.
+
+References:
+- [Configuring Airflow Connections - Airflow Official](https://airflow.apache.org/docs/apache-airflow/stable/howto/connection.html)
+- [Configuring Airflow-GCP Connections - Airflow Official](https://airflow.apache.org/docs/apache-airflow-providers-google/stable/connections/gcp.html)
+- [Importing Airflow Connections - Airflow Official](https://airflow.apache.org/docs/apache-airflow/stable/cli-and-env-variables-ref.html#import)
+- [Importing Airflow Variables - Stack Overflow](https://stackoverflow.com/a/65580854)
+
+Here's some additional information of my old written guideline to configure **postgres connections**:
+- `Connection Type:` **Postgres**
+- `Host` *service name of postgres in docker-compose.yml*
+- `Schema` *schema name we used in `setup.sql`*
+- `Login` *username of postgres in docker-compose.yml*
+- `Password` *username of postgres in docker-compose.yml*
+- `Port` *username of postgres in docker-compose.yml*
+
+***Note1:** we used **`database name`** that we specified in `docker-compose.yml` in DAG script where we need to connect to the database, PostgresHook with `conn_id` as Postgres Host name, and `schema` as **`database name`***.
+
+***Note2:** we can omit `schema` argument in PostgresHook and Airflow connection, if we use `public` schema, or specify SELECT `myschema.table_name` FROM ... in `setup.sql`*
+
+### 2.1.4 Airflow Entrypoint
+
+However, importing airflow connections and variables through CLI is still a manual process and we don't expect this steps in production. So, using airflow entrypoint become important. [airflow-entrypoint.sh](./airflow-entrypoint.sh) is specified in `docker-compose.yml` file in `entrypoint` section to be executed everytime when airflow containers created and started. `airflow-entrypoint.sh` is defined with many steps including importing conenctions and variables, authenticating with gcloud using ADC, and the last line is defined according to airflow official site to continue airflow default entrypoint.
+
+**Note:**
+- gcloud authentication line is very important to make the container being able to pull docker image from the private repository (GAR). After the entrypoint executed, the container will contains sensitive information from using ADC to `print-access-token` into `~/.docker/config.json`. This line of code is equal to `gcloud auth configure-docker <region>...`.
+- However, this process do not make airflow image become sensitive, because we did not copy ADC file to docker image directly, instead we use mounting volume. This sensitive information will be contained only in container and after entrypoint is executed, not in image. Without proper setting up mounting part, the airflow image wouldn't operate properly.
+
+#### Entrypoint Debugging:
+```
+Docker : exec /usr/bin/sh: exec format error
+```
+- Add shebang line (`#!/bin/bash`) as the first line in `airflow-entrypoint.sh`
+
+```
+denied: Permission "artifactregistry.repositories.uploadArtifacts" denied on resource "projects/xxx/locations/xxx/repositories/
+```
+- Use `gcloud auth configure-docker <gcp-region>-docker.pkg.dev` or specify `print-token-access` to `docker login -u oauth2accesstoken`, please check code example in `airflow-entrypoint.sh` file.
+
+References:
+- [Execute custom code before the Airflow entrypoint - Airflow Official](https://airflow.apache.org/docs/docker-stack/entrypoint.html#execute-custom-code-before-the-airflow-entrypoint)
+- [shebang line in airflow-entrypoint.sh - Stack Overflow](https://stackoverflow.com/a/77155746)
+- [gcloud authenticate in docker container using ADC - Stack Overflow](https://stackoverflow.com/a/77022687)
+
+### 2.2 Authentication
+
+### 2.2.1 Long-lived credentials method vs Others
+
+- In fact, the most easiest way to interact with cloud services through code is to use long-lived tokens or credentials, but it's also the least safest way to authenticate to cloud provider considering existing of secret files.
+- Mostly in the Airflow Operator code provided by official provider, there're always parameters that you can indicate where your credentials can be read from regarding to where the code is running on. So, you can pack your credentials together with the code to make cloud enabling available.
+- Even though, there's a risk that anyone in the team can accidentially expose this secret file to public by pushing code to public GitHub repo or pushing image containing credentials footprint to public registry.
+- So, there're gradually emerging of new ways to authenticate with cloud such as using ***Application Default Credentials (ADC)*** or **Workload Identity Federation (WIF)** provided by GCP dedicatedly intended to remove existing of secret files existence.
+- We will use ADC for GCP, and long-lived credentials for AWS in this project for the code. But we will use WIF for CI/CD pipeline.
+
+*ADC* will be elaborated on this Topic, but *WIF* will be elaborated on Topic 6: *ML Code Productionization and Deployment*
+
+![authen-overview](./docs/authen-overview.png)
+
+### 2.2.2 GCP ADC for Terraform
+
+According to [2.1.2 Account Impersonation](#212-account-impersonation) and [2.2.1 Long-lived credentials method vs others](#221-long-lived-credentials-method-vs-others), we will use ADC with impersonation to manage cloud services through Terraform.
+1. We manually configured IAM permissions.
+2. We retrieved the SA email in the previous topics.
+3. We executed `gcloud auth` with SA email and stored in in `ADC` file in
+    - MacOS/Linux: `/.config/gcloud/application_defailt_credentials.json`
+    - Windows: `${APPDATA}/gcloud/application_defailt_credentials.json`
+4. After execution, GCP will send a refreshed token to relevant files in the same directory of ADC.
+5. In the Terraform code, there's a part to be specified to use SA in `code/models/terraform.tfvars` *(hidden from repo)* to be used to authenticate with cloud platform.
+6. Now, We can interact freely with GCP resources.
+
+```bash
+# workdir: code/models/terraform
+
+terraform init
+terraform plan
+terraform apply
+terraform destory
+
+# workdir: code/models/terraform/auth
+terraform init
+terraform plan
+terraform apply
+# terraform destory
+```
+
+### 2.2.3 GCP ADC for Pipeline Code
+
+After we did the steps above, we will have ADC file stored in local machine as `application_default_credentials.json` at `$GOOGLE_APPLICATION_CREDENTIALS`.
+1. We will specify in `docker-compose.yml` in `airflow-common` section to mount this file into the containers and set `$GOOGLE_APPLICATION_CREDENTIALS` to that mount target path.
+2. However, if we have docker-in-docker use cases such as orchestrating ML service task, we have to mount ADC to ML service container that's running in Airflow scheduler container to make ML Service also being able to communicate with cloud platform.
+3. You can do by mounting Local ADC from host directly to ML Service container through DockerOperator `host/path/to/gcloud:/root/.config/gcloud`. Please, see mounting example in [src/dags/data_product/ml_dynamic_segment.py](./src/dags/data_product/ml_dynamic_segment.py)
+4. Now, the container are available to interact with cloud resources after `airflow-entrypoint.sh` is executed. And by specifying `google_cloud_default` airflow connection, the ETL code will also be able to interact with GCP.
+
+References:
+- [Use Google Cloud user credentials when testing containers locally - Medium](https://medium.com/google-cloud/use-google-cloud-user-credentials-when-testing-containers-locally-acb57cd4e4da)
+- [Authentication on GCP with Docker: Application Default Credentials - Medium](https://medium.com/datamindedbe/application-default-credentials-477879e31cb5)
+
+### 2.3 Terraform
+
+Instead of manual configuration through Web UI on cloud platform, We can manage cloud *infrastructure as code (IaC)* by **"Terraform"**, which is a better way to manage cloud resources by reducing error-prone from manual configuring. Terraform make it easier to create, track stage, and delete the resources.
+
+The [code/models/terraform/main.tf](./code/models/terraform/main.tf) file, using some variables from [code/models/terraform/variables.tf](./code/models/terraform/variables.tf) file, will produce the following resources for ETL pipeline and ML Service:
+- 3 data lake buckets *(landing/staging/curated)*
+- 2 Bigquery datasets *(silver/gold)*
+- 1 Artifact Registry Repository *(dev)*
+
+The [code/models/terraform/auth/main.tf](./code/models/terraform/auth/main.tf) file, using some variables from [code/models/terraform/auth/variables.tf](./code/models/terraform/auth/variables.tf) file, will produce the following resources for CI/CD keyless authentication:
+- 1 workload identity pool
+- 1 workload identity pool provider
+
+```bash
 terraform init
 
 terraform plan
@@ -353,148 +467,18 @@ terraform apply
 terraform destroy
 ```
 
-- `terraform init` initialize Terraform (where `main.tf` located) in your local machine (don't forget to `cd` into terraform directory first).
-- `terraform plan` to see what resources will be created and syntax checking.
+- `terraform init` initialize Terraform (where `main.tf` located) in your local machine (don't forget to `cd` into each terraform directory first).
+- `terraform plan` to see what resources will be created, authentication validation, and syntax checking.
 - `terraform apply` to create the resources.
 - `terraform destroy` to delete the resources.
 
-After all, you can see the result in your GCP console, in Google cloud storage, and Bigquery that it's already created bucket, dataset and an empty table together with newly created files in local filesystem such as `*.tfstate*`, and `.terraform*`. Please also add these files to `.gitignore` to avoid credential exposing.
+Eventually, you will see the results in your GCP services together with newly created files in local filesystem such as `*.tfstate*`, and `.terraform*`. Please also add these files to `.gitignore` to avoid credential exposing.
 
-***Note**: The written script made us easily create and **delete** the resources which proper for testing purpose not on production.*
+### 2.4 Extending Terraform to AWS
 
-### 2.2 Setting up DAG and Connections
+***Note: This section and `terraform/main.tf` were not revised properly considered as deprecated code, please, use with caution.***
 
-<img src="./docs/airflow-dag-graph.jpg">
-
-In this project, I wrote main script: [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl_dag.py) to create 1 DAG of **(8+1) tasks**, which are:
-1. Reading data from raw url from github that I uploaded myself. Then, upload it to GCP bucket as uncleaned data.
-2. Fetching (Unloading) data from the postgres database that we simulate in docker containers as a data source. Then, upload it to GCP bucket as cleaned data.
-3. Downloading from the Kaggle website using Kaggle API. Then, upload it to GCP bucket (GCS) as uncleaned data. 
-4. Data Transformation: reformat to parquet file, and cleaning data to be ready for data analyst and data scientist to use, then load to staging area.
-5. Loading data located in staging area to data warehouse (Bigquery) as cleaned data with native table approach.
-6. Loading to data warehouse (Bigquery) as cleaned data with external table approach from staging area.
-7. Loading to another Postgres database as cleaned data.
-8. Clearing data in staging area (GCP bucket). **(this will not be used for external table approach that requires the source file to be exists)**
-
-Additionally, I also wrote [**transform_load.py**](./src/dags/transform_load.py) and [**alternative_cloud_etl.py**](./src/dags/alternative_cloud_etl.py) to demonstrate utilizing modularization or "utils" and how to use different cloud services, respectively.
-
-After we wrote the DAG script, we're gonna test our DAG by initating docker compose again, and go to `localhost:8080` in web browser, trigger DAG and see if our DAG worked successfully.
-
-But before triggering the DAG, we need to set up the connection between Airflow and our applications in Airflow web UI:
-
-**Postgres connection**: Go to `Admin` > `Connections` > `Create` 
-- `Connection Type:` **Postgres**
-- `Host` *service name of postgres in docker-compose.yml*
-- `Schema` *schema name we used in `setup.sql`*
-- `Login` *username of postgres in docker-compose.yml*
-- `Password` *username of postgres in docker-compose.yml*
-- `Port` *username of postgres in docker-compose.yml*
-
-<img src="./docs/airflow-connections-postgres.jpg" width="75%">
-
-And then, `Save`
-
-***Note1:** we used **`database name`** that we specified in `docker-compose.yml` in DAG script where we need to connect to the database, PostgresHook with `conn_id` as Postgres Host name, and `schema` as **`database name`***.
-
-***Note2:** we can omit `schema` argument in PostgresHook and Airflow connection, if we use `public` schema, or specify SELECT `myschema.table_name` FROM ... in `setup.sql`*
-
-**Bigquery connection**: Go to `Admin` > `Connections` > `Create` 
-- `Connection Id`: *your own defined name (will be use in DAG)*
-- `Connection Type`: **Google Cloud** 
-- `Project Id`: Your Project Id
-- `Keyfile Path`: *absolute path to your service account credentials file*
-
-<img src="./docs/airflow-connections-google.jpg" width="75%">
-
-And then, `Save` again.
-
-**Note:** you have to change the code in [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl_dag.py) to match your connection id that you created in Airflow UI, and your project id also.
-
-For futher details, we only create connections of Postgres and Bigquery for fetching data from containerized Postgres database, and creating **external table** for Bigquery respectively because it's required, unless airflow could not connect to the applications and cause the bug. Most of time, you can tell if it requires connection in Airflow UI by existing of `conn_id` arguments in the Operators. But, the other connection,  like Google Cloud Storage, is not required to be created in Airflow UI, because we use the credentials file that mounted into Airflow container to authenticate the connection in the code.
-
-<img src="./docs/airflow-connections.jpg" width="75%">
-
-<details><summary>Reproducing Note for DAGs development</summary>
-<p>
-
-- Reading direct from official documentation is a good way to develop your code and enable other team members easier to maintain, such as Google Cloud Documentation, and Kaggle API Documentation.
-- Reading Logs after triggering DAG in airflow web UI was very helpful to debug the issues.
-- When we have google credentials as a json file, it make us less concerned about how to authenticate, like gcloud, gsutil etc. (or even connection in Airflow). We just have to mount the credentials into the airflow container, put the path of the json file in the code and use the right API or library provided by provider which mostly can be found as templates in official documentation.
-    - Although, this is not the best practice to manage your secret as mentioned in Terraform part.
-- In order to handle python dependencies such as additional libraries to be available during runtime that are not belong to python default module, we have to add the additional lib to `requirements.txt` file, and install with `pip install -r` in custom airflow image, usally called baked image. And then, rebuild the image (`docker compose down -v`, `docker compose build`, `docker compose up -d`) again.
-- Make sure we don't have any dependencies conflict and compatible with python version which can change in [airflow.Dockerfile](airflow.Dockerfile) by: 
-```dockerfile
-FROM apache/airflow:slim-2.6.2-python3.10
-```
-- I used `gcsfs` or `GCSFileSystem` in DAG script to run transformation task. the library allow us to manage and handle the data in GCS.
-    - we also have to authenticate via `GCSFileSystem` instance in the code instead of `google.cloud.storage.Client`.
-- When I first load the parquet file to pre-defined schema in Bigquery, I encountered the error that the schema is not matched. I found out that the schema of parquet file is not the same as the schema in Bigquery with extra column "index level 0". So, the solution is to drop the column before saving to parquet file in Google Cloud Storage by using `df.to_parquet(..., index=False)`, just like `to_csv('filename.csv', index=False)`.
-    - *(Even you download the `index=True` parquet file to check in pandas, it will not show the extra index column)*
-- *(Update)* Meanwhile I was developing other part of the project, a new airflow version(2.7) was launched, and the new version of airflow image is not compatible with the old version by airflow backendDB which caused a serious bug making `airflow-init` initialized unsuccessfully, `airflow-scheduler`, and `airflow-webserver` not work as expected.
-    - the solution is to remove all containers, images, and existing volumes of airflow backendDB, and then intialize again with the fix image version.
-        - remove local volumes by
-        ```bash
-        docker compose down --volumes --rmi all
-
-        docker system prune --all --volumes
-        ```
-        - remove local airflow backendDB `postgres-db-volume`, and also `logs`, `plugins`, and `config` files in `src` folder.
-    - I changed the airflow image version to `apache/airflow:2.6.2-python3.10` in [airflow.Dockerfile](airflow.Dockerfile) and `apache/airflow:2.6.2` in [docker-compose.yml](./docker-compose.yml) to the version of image.
-    - Don't use the `latest` version in your script, if you want to make you work reproduceable.
-</p>
-</details>
-
-**Bigquery: Native tables vs External tables**
-
-<img src="./docs/native-vs-external.png" width="75%">
-
-In the DAG script, we have 2 tasks to load data to Bigquery, one is using Native table, and another is using External table. the differences between them are their performance and how it works.
-
-External tables are suitable when you want to query data without loading it into BigQuery, optimizing storage costs and leveraging existing data sources. Native tables, on the other hand, offer enhanced performance and advanced features within BigQuery, like partitioning and clustering and more user-friendly.
-
-### 2.3 Triggering DAG and Monitoring
-
-After finishing the writing DAG part, we can go to `localhost:8080` via web browser and login with username, and password we defined in [docker-compose.yml](docker-compose.yml) file. Then, we can see the DAGs we created in the UI. We can trigger the DAG by clicking on the `Trigger DAG` button, and monitor the progress of the DAG by clicking on the DAG name.
-
-You can also see the logs of each task by clicking on the task name in the DAG graph and see how the tasks flow is working via Graph.
-
-<img src="./docs/airflow-triggered.jpg">
-
-Most of time, you don't write the DAGs in one time and test only once when it's done, you have to come to this UI, triggering and monitoring to see if it works or not, and then fix the bugs. It's very helpful to debug the code by reading the logs and checking which tasks are failed.
-
-**Once the ETL DAG worked successfully, the data engineering part is finished.**
-
-### **Step to Reproduce Virtualization for testing**
-1. Apply Terraform to create the infrastructure
-    ```hcl
-    terraform plan
-
-    terraform apply
-    ```
-2. Start microservices with docker-compose
-    ```bash
-    docker compose build
-
-    docker compose up -d
-    ```
-3. Trigger the DAG in Airflow UI
-    - go to `localhost:8080` via web browser
-4. Check the data in Data Lake and Data Warehouse
-    - login to Cloud Console
-    - (If you want to test model deployment, you can do it here)
-5. Stop microservices with docker-compose
-    ```bash
-    docker compose down -v
-    ```
-6. Destroy the infrastructure with Terraform
-    ```hcl
-    terraform destroy
-    ```
-
-### 2.4 Extending to AWS
-In the previous part, I used GCP as a cloud service provider for data lake and data warehouse, but we can also use AWS (or Azure) as a cloud service provider. The process is quite similar to GCP, but it will have some differences in the code and architecture which we can adapt to it easily if we understand the concept of ETL.
-
-We will use AWS **S3** as a data lake, and AWS **Redshift** as a data warehouse. As before, we need to create IAM user (which equal to service account in GCP) and get the credentials file as `.csv` extension, then use it to create S3 bucket and Redshift by **terraform**.
+Fow AWS, we will use **S3** as a data lake, and AWS **Redshift** as a data warehouse. Like GCP, we need to create IAM user (which equal to service account in GCP) and get the credentials file as `.csv` extension, then we use it to create S3 bucket and Redshift by **terraform**.
 
 We will create an IAM user, and get the credentials file manually via Web IU. Access for AWS is quite more complex than GCP, composed of IAM user, IAM Role, and Policy which will not be described in detail in this project.
 
@@ -528,8 +512,6 @@ To get the IAM user, we must have root user which is the first user we created w
 
 After getting the credentials file, mount it to your `credentials` folder. Now, we can use it in **terraform** to create S3 bucket and Redshift resources.
 
-#### Terraform for AWS
-
 In this part is quite complex due to **"static credentials"** behavior, since we don't need to hard-coded or type in the key derectly to the terraform file. So in general, we will use **"terraform.tfvars"** to pass the hard-coded credentials to terraform file and add `terraform.tfvars` to `.gitignore`.
 
 The concept is simple: we create resources in `main.tf` where some part of it use `var.` to refer to the variable specified in `variables.tf` file. In `variables.tf` file, we specify the variable name, type, and default value, if the default value is not specified, we have to pass the value interactively after `terraform apply` as inputs **OR** pass it automatically by creating `terraform.tfvars` file and type in the variable name and value. This is where we will copy credentials from csv to put it in **(and again please don't forget to add both files to `.gitignore`)**.
@@ -552,7 +534,7 @@ redshift_serverless_subnet_2_cidr = "10.0.2.0/24"
 redshift_serverless_subnet_3_cidr = "10.0.3.0/24"
 ```
 
-Then you good to go with `terraform apply`.
+Then, you good to go with `terraform apply`.
 
 In Addition, configuring Redshift Serverless is quite complex, so I will not go into detail, but you can check the code in [main.tf](./terraform/main.tf). Basically we need to create the following:
 - Data "aws_availability_zones" to get the availability zone.
@@ -563,11 +545,28 @@ In Addition, configuring Redshift Serverless is quite complex, so I will not go 
 - Workgroup
 - Namespace
 
-Unlike S3, which is much more easier to create, we just need to specify the name of the bucket, and the region.
-
 *Note: Redshift Serverless let us create a data warehouse without managing the cluster ourselves, it can **scale down to zero** or **pay as you use**, but it's still in preview.*
 
-### 2.5 Detail of the ETL Code
+## 3. DAGs and ETL Pipelines
+
+In this project, I used a dataset from kaggle which was:
+- loaded to postgres database
+- uploaded to this repo github as csv format
+- and I wrote DAGs to use Kaggle API to obtain the dataset directly from the Kaggle website.
+
+![etl-overview.png](./docs/etl-overview.png)
+
+In this project, I wrote main script: [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl_dag.py) to create 1 DAG of **(8+1) tasks**, which are:
+1. Reading data from raw url from github that I uploaded myself. Then, upload it to GCP bucket as uncleaned data.
+2. Fetching (Unloading) data from the postgres database that we simulate in docker containers as a data source. Then, upload it to GCP bucket as cleaned data.
+3. Downloading from the Kaggle website using Kaggle API. Then, upload it to GCP bucket (GCS) as uncleaned data. 
+4. Data Transformation: reformat to parquet file, and cleaning data to be ready for data analyst and data scientist to use, then load to staging area.
+5. Loading data located in staging area to data warehouse (Bigquery) as cleaned data with native table approach.
+6. Loading to data warehouse (Bigquery) as cleaned data with external table approach from staging area.
+7. Loading to another Postgres database as cleaned data.
+8. Clearing data in staging area (GCP bucket). **(this will not be used for external table approach that requires the source file to be exists)**
+
+Additionally, I also wrote [**transform_load.py**](./src/dags/transform_load.py) and [**alternative_cloud_etl.py**](./src/dags/alternative_cloud_etl.py) as *utils* to enable different cloud services.
 
 I intentionally separate the code for AWS and GCP, so we can easily find between them. The code for AWS is in [alternative_cloud_etl.py](./src/dags/alternative_cloud_etl.py) file. The code is quite similar to GCP, but there are some differences, such as:
 - using `boto3` instead of `google.cloud.storage` to connect to S3.
@@ -580,7 +579,35 @@ I intentionally separate the code for AWS and GCP, so we can easily find between
 
 *Note: Loading to Redshift part will be described more in the future*
 
-### 2.6 Airflow DAGs and Data warehouse in Production
+**Note:** We have to change the parameters `conn_id` in [`ecomm_invoice_etl_dag.py`](src/dags/ecomm_invoice_etl_dag.py) to match airflow connections that we specified.
+
+![airflow-dag-graph.jpg](./docs/airflow-dag-graph.jpg)
+
+#### Development Note
+
+- Referring to official documentation of how your code should be written is a good way to develop and allow other team members to maintain easily. It's always a good practice to stick with the best practice and avoid *working around*.
+- When I first load the parquet file to pre-defined schema in Bigquery, I encountered the error that the schema is not matched. I found out that the schema of parquet file is not the same as the schema pre-defined in Bigquery by extra column: "index level 0". So, the solution is to drop the column before saving to parquet file in Google Cloud Storage by using `df.to_parquet(..., index=False)`
+    - *(Even you download the `index=True` parquet file to check in pandas, it will not show the extra index column)*
+- To hard refresh airflow session, we can remove local volumes by:
+    ```bash
+    docker compose down --volumes --rmi all
+
+    docker system prune --all --volumes
+    ```
+    - Please, also remove local airflow backendDB `postgres-db-volume`, and `logs` files in `src` folder.
+
+If you use different dataset, you might have to write your own DAGs what match your specific use cases.
+
+#### Bigquery: Native tables vs External tables
+
+<img src="./docs/native-vs-external.png" width="75%">
+
+In the DAG script, we have 2 tasks to load data to Bigquery, one is using Native table, and another is using External table. the differences between them are their performance, how it works, and user interface for that table.
+
+External tables are suitable when you want to query data without loading it into BigQuery, optimizing storage costs and leveraging existing data sources. Native tables, on the other hand, offer enhanced performance and advanced features within BigQuery, like partitioning and clustering and more user-friendly.
+
+### 3.1 Airflow DAGs and Data warehouse in Production
+
 - **Airflow**
     - In the best practice, we wrap ETL processes into Airflow Opeators separately, can be either importing from official sites or sometimes customizing it to meet team's agreement or according to team's data governance.
     - Separating processes by multiple operators and written as the *OOP* pattern can represent DAGs, airflow jobs, or workflows in comprehensive way and make a task to be atomic and isolated from each other.
@@ -595,9 +622,21 @@ I intentionally separate the code for AWS and GCP, so we can easily find between
         - Many companies discourage the use of these tools giving the reason that it's not appropriate for big scale projects and too messy to maintain. However, I disagree this because there're practices and principles that solve this problem, like ***Data Mesh*** *(twisted from Domain-driven design: DDD)* and ***Modularity***. 
         - Anyway, it requires highly skilled data archietct and data engineer to develop and maintain these tools along with the priciples. So, they might not be able to focus this enough since it can be quite a low-level foundation and very far from a product that's seemed to be more profitable to the company.
 
-## 3. Web Scraping
+### 3.2 Data Modeling and Optimization in Production
+This topic is quite important, since it can be highly involved in cost optimization.
+- Although *ingestion* process is completed, we might need to transformed it, besides of raw cleaned and normalized data, with custom business logic, and tables aggregation to further analyze and exploit more from data.
+- This process usually referred to *ELT* or *transformation* that is not the same *transformation* in ingestion process, which is just controling data quality by casting type, formatting date/timestamp or mapping data into specified schema by a framework.
+- Transformed data models can be located in *curate* or *gold* layer in *medallion architecture*, but sometimes can be in *semantic layer* which is referred to another transformation sub-layer before being shown on dashboard. However, this depends on companies' data archietcture and agreement between teams.
+![semantic-concept](./docs/semantic-concept.jpg)
+- Transformation process can be done with SQL by analytic engineer, data analyst, domain expert, and etc. to make data become more meaningful to business aspect. However without proper expertise in SQL and data modeling, cost from dashboard usage and data preparation can be gone in a very wrong way.
+- Tools that support transformation at aggregation level is emerging, since ELT pattern is still counted as modern at the moment for batch data engineering pipeline. Some of famous tools you might have heard could be *dbt*, and *SQLMesh* which enable ability to perform complex incremental data loading logic, SCD handling, data lineage, data dict, and built-in data quality controlling at high level. However, you could still implement data aggregation with native airflow operator introduced by official provider by executing sql directly to data warehouse through Airflow.
 
-This part is not currently in development. I will update the progress later. But, you can check the concept and the old written code in [web-scraping](https://github.com/Patcharanat/ecommerce-invoice/tree/master/web-scraping) folder.
+#### 3.3 How to Optimize Data Models
+- What should be considered in gold layer (or curated) is technical aspects such as, SCD (Slow Changing Dimension), snapshot and incremental transformation (which usually involved with how ingestion pipelines work and silver layer partitioning), data transferring behavior or ingestion method (full dump, append, delta, or replace), and business logic (if semantic layer not exists or it required pre-calculation in gold layer)
+- **Pre-calculated table was proved to be more optimized when data is queried to dashboard. Moreover, data aggregation with only necessary partitioning considered also important in cost optimization when it come to larger scale in production database.**
+- Using view not only prevent downstream users from modifying table in ideal, but also manipulate the users to query from only specific period of data or partition resulting in lesser data scanning per read or per dashboard refresh.
+    - Using view can futher lead to *data governance* issues such as user permission to read from both table and view if not considering dashboard permission. 
+- Modeling data warehouse to *star schema* or *snowflake schema* (considered to be fact/dimension pattern) is claimed multiple times to be more cost optimized, but it lack of quantitative evidence.
 
 ## 4. EDA and Data Visualization
 
@@ -671,27 +710,10 @@ What worth to mention are:
 - I used **DAX** to calculate Growth Rate as a measure that would be quite complex for some people who are not familiar with PowerBI or DAX, but it used just regular formula as: `(Sales in the Current Context month - Sales in the Previous month) / Sales in the Previous month`. I also used `CALCULATE` function to calculate the previous month value together with `ALLSELECTED`, and `DIVIDE` function to calculate the growth rate.
 - I linked variables between reports to be able to **Drill Through** to other reports, making the dashboard more interactive, and more in-depth to analyze.
 
-A little note for future myself:
+#### Note
 - **Dashboard is about Storytelling**, so it's better to have a story in mind before creating the dashboard. It's not just about the data, but how to arrange the story from the data.
 - **It's crucial to know who are the audiences of the dashboard, and what the objective of the dashboard is**. So, we can select the right metrics, right data, and right visualization.
 - **Data model is very important**, it's the foundation of the dashboard. If the data model is incorrected, the dashboard will be wrong also. If the data model come in a good shape, the dashboard will be easier to create, and the data will be easier to analyze. (especially in aspect of **Time Intelligence**)
-
-### 4.3 Data Modeling and Optimization in Production
-This topic is quite important and partially related with data engineering processes, since it can be highly involved in cost optimization.
-- Although *ingestion* process is completed, we might need to transformed it, besides of raw cleaned and normalized data, with custom business logic, and tables aggregation to further analyze and exploit more from data.
-- This process usually referred to *ELT* or *transformation* that is not the same *transformation* in ingestion process, which is just controling data quality by casting type, formatting date/timestamp or mapping data into specified schema by a framework.
-- Transformed data models can be located in *curate* or *gold* layer in *medallion architecture*, but sometimes can be in *semantic layer* which is referred to another transformation sub-layer before being shown on dashboard. However, this depends on companies' data archietcture and agreement between teams.
-![semantic-concept](./docs/semantic-concept.jpg)
-- Transformation process can be done with SQL by analytic engineer, data analyst, domain expert, and etc. to make data become more meaningful to business aspect. However without proper expertise in SQL and data modeling, cost from dashboard usage and data preparation can be gone in a very wrong way.
-- Tools that support transformation at aggregation level is emerging, since ELT pattern is still counted as modern at the moment for batch data engineering pipeline. Some of famous tools you might have heard could be *dbt*, and *SQLMesh* which enable ability to perform complex incremental data loading logic, SCD handling, data lineage, data dict, and built-in data quality controlling at high level. However, you could still implement data aggregation with native airflow operator introduced by official provider by executing sql directly to data warehouse through Airflow.
-
-#### How to Optimize Data Models
-- What should be considered in gold layer (or curated) is technical aspects such as, SCD (Slow Changing Dimension), snapshot and incremental transformation (which usually involved with how ingestion pipelines work and silver layer partitioning), data transferring behavior or ingestion method (full dump, append, delta, or replace), and business logic (if semantic layer not exists or it required pre-calculation in gold layer)
-- **Pre-calculated table was proved to be more optimized when data is queried to dashboard. Moreover, data aggregation with only necessary partitioning considered also important in cost optimization when it come to larger scale in production database.**
-- Using view not only prevent downstream users from modifying table in ideal, but also manipulate the users to query from only specific period of data or partition resulting in lesser data scanning per read or per dashboard refresh.
-    - Using view can futher lead to *data governance* issues such as user permission to read from both table and view if not considering dashboard permission. 
-- Modeling data warehouse to *star schema* or *snowflake schema* (considered to be fact/dimension pattern) is claimed multiple times to be more cost optimized, but it lack of quantitative evidence.
-
 
 ## 5. Machine Learning Model Development
 
@@ -884,18 +906,6 @@ References:
 - [Finding Seasonal Trends in Time-Series Data with Python](https://towardsdatascience.com/finding-seasonal-trends-in-time-series-data-with-python-ce10c37aa861)
 - [Various Techniques to Detect and Isolate Time Series Components Using Python (Technical)](https://www.analyticsvidhya.com/blog/2023/02/various-techniques-to-detect-and-isolate-time-series-components-using-python/)
 
-### 5.4 Recommendation System
-
-*Not started . . .*
-
-### 5.5 Customer Churn Prediction
-
-*Not started . . .*
-
-### 5.6 Price Analysis and Optimization
-
-*Not started . . .*
-
 ## 6. ML Code Productionization and Deployment
 
 After we developed and evaluated the model, we can deploy the model to production to leverage the business, bringing the model out from the Python notebook or your lab, and not only making it available to the data scientist.
@@ -923,8 +933,9 @@ First, we will focus on extracting the model development processes from notebook
     - Reader and Writer classes are implemented to support feeding input and retrieving output from ml service both local and cloud environments.
 - Selecting K Value
     - Since now we can't consider optimal k value qualitatively by human through automated pipeline, clarifying logic/rules to find optimal K now become important.
-    - Here is the logic represented in math:
+    - Here is the behind logic represented in math:
     ![dynamic_k_equation](./docs/dynamic_k_equation.png)
+    ![automated-kmeans.png](./docs/automated-kmeans.png)
 - Model Development Changes
     - Changing feature engineering process imputing recency feature from `999` to the real recency
     - Replacing interpretation method from decision tree or xgboost feature importance with LightGBM and permutation feature importance for more interpretable and quantitative measurement.
@@ -1012,7 +1023,7 @@ docker build -t ecomm/interpretable-dynamic-rfm-service:v2 .
         --exec_date 2024-11-03
     ```
 
-If all steps work perfectly, we can now go to the next step: deploy to cloud
+If all steps work perfectly, we can now go to the next step: deploying to cloud
 
 ### 6.3 Deploying the Model to the Cloud Environment
 
@@ -1024,20 +1035,8 @@ So, what we need to do is:
 
 #### 1. Prepare cloud environment and authentication
 
-First, you need to install '*Google Cloud CLI (gcloud/Cloud SDK)*' to make you more convenient to interact with gcp resources beyond web-based UI. Check installation completion by running `gcloud --version`.
+Since we have already set SA permission in Topic *2.1.1 Setting up IAM and Service Account*, so there will be just authentication confirmation to be explained
 
-Rerference:
-- [Install the gcloud CLI - Google Cloud Platform](https://cloud.google.com/sdk/docs/install)
-
-For the sake of this topic and the next, please add this following roles for sufficient permissions:
-- **Artifact Registry Admin**: *For creating/deleting Artifact Registry object*
-- **IAM Workload Identity Pool Admin**: *For creating/deleting Workload Identity Federation (WIF) Pool*
-- **Service Account Token Creator**: *For account impersonation*
-- **Workload Identity User**: *For granting access from WIF to the service account*
-
-![deploy-access-example](./docs/deploy-access-example.png)
-
-In the previous Terraform section, the steps are introduced to use '*static credentials*', loaded from cloud to local machine, to authenticate with GCP. But in this revised version, I will use *Application Default Credentials (ADC)* impersonated with a service account to authenticate between Terraform and GCP.
 - *ADC* is a method to authenticate to GCP interactively through CLI via *gcloud*. It's a proper authentication method when there's human involved between the processes, but impossible with automated pipeline.
 - ADC method let us login to GCP with email address through web browser interactively, and then it store a credential to gcloud default path to look for automatically when we try to authenticate with GCP with gcloud
 
@@ -1075,7 +1074,7 @@ terraform apply
 Error: Error creating WorkloadIdentityPool: googleapi: Error 409: Requested entity already exists
 ```
 
-If below error occurred, please check if you have the '*Service Account Token Creator*' role in both owner account and service account. if yes, please try to reset `$GOOGLE_APPLICATION_DEFAULT` environment variable by `unset $GOOGLE_APPLICATION_DEFAULT`, restarting terminal and try to authenticate with `gcloud` with the above process again.
+If below error occurred, please check if you have the '**Service Account Token Creator**' role in both owner account and service account. if yes, please try to reset `$GOOGLE_APPLICATION_DEFAULT` environment variable by `unset $GOOGLE_APPLICATION_DEFAULT`, restarting terminal and try to authenticate with `gcloud` with the above process again.
 ```bash
 {
   "error": {
@@ -1130,9 +1129,79 @@ Check the result, pushed image, at artifact registry gcp service.
 Reference:
 - [Push and pull images - Google Cloud Platform](https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling)
 
-### 6.4 CI/CD Workflow - Automated Deployment Process
+### 6.4 Unit Test, Pre-commit, and Linting
 
-When we make changes on the app service, we certainly need to re-deploy it to the cloud environment with a newer version for improvement on production. But, we don't want to do it manually every time, especially on production environment, which can cause error-prone and time-consuming process. So, this come to the important of automating the deployment process or CI/CD Workflow. CI/CD Pipeline make sure your developed application is well-maintained, qualified with tests, and deploy securely in predictable way without error-prone issue.
+#### 6.4.1 Pre-commit, and Linting
+
+Although Linting and Code Formatting is usually considered as supplement, adding these components make your code have more quality and is written in the best practice and convention. With pre-commit, you can prevent your development team to push low quality code to GitHub by regulating Linter which can be apply manually or through pre-commit hooks.
+
+In this project I use Ruff for only python linter (no formatter) together with pre-commit ruff hook.
+
+Related Files:
+- [ruff.toml](./ruff.toml) : *To configure python linting options and styles.*
+- [.pre-commit-config.yaml](./.pre-commit-config.yaml) : *To enable pre-commit and set configuration*
+
+```bash
+# pip install code/models/requirements.txt
+
+pip install ruff==0.7.3 pre-commit==4.0.1
+```
+```bash
+# ruff
+ruff check
+
+# ruff with glob pattern
+ruff check code/models/*.py
+
+# ruff format
+ruff format
+```
+```bash
+# pre-commit
+pre-commit install
+
+# try git commit, if your code is failed to commit, you will be unable to commit your code until it's fixed.
+
+pre-commit uninstall
+```
+
+**Note:**
+- Pre-commit will only apply on the files that are committed or staged changes, and if you specified additional conditions, like only specific path to be checked with through pre-commit, it will comply with it also.
+- Please note that pre-commit in this project is configured to only check linting in `code/models/` path.
+- Pre-commit also supported other languages with various types of hook.
+- Ruff is currently the fastest linter for python, since it's written in rust. However, there's also other python linters and formatter in market such as pylint, flake8, black that are different by coding-style and how to configure it.
+
+References:
+- [Pre-commit Official Documentation](https://pre-commit.com/index.html)
+- Python Linter: [The Ruff Linter - Ruff Official](https://docs.astral.sh/ruff/linter/)
+- Ruff Configuration: [Configuring Ruff - Ruff Official](https://docs.astral.sh/ruff/configuration/)
+
+#### 6.4.2 Unit Test
+
+What more important is unit testing. Personally I don't really favor this topic, but it's the best practice to specify test cases and test it with your code (function, and class) to ensure that every changes in your code during development are still and will be working as expected. In this project I use pylint that's quite basic and popular among the communities for python.
+
+Related File:
+- [test_ml_services.py](./tests/unit/test_ml_services.py) : to demonstate applying unit testing for *"finding optimal K"* function in ML Service.
+
+```bash
+# make test
+
+PYTHONPATH="code/models" pytest tests/unit/test_ml_services.py --disable-pytest-warnings
+```
+
+Note:
+- Without specifying `PYTHONPATH`, we have to specify relative path to where the testing script is for `pytest` argument which could lead to more overhead of specifying path within your project.
+- Use flag `--disable-pytest-warnings` to avoid minor warnings.
+
+References:
+- [Using of `PYTHONPATH` - Stack Overflow](https://stackoverflow.com/a/26544761)
+- Multiple test cases with pytest - parametrize: [How to parametrize fixtures and test functions](https://docs.pytest.org/en/stable/how-to/parametrize.html)
+- OOP pytest: [Object oriented testing in Python - geeksforgeeks](https://www.geeksforgeeks.org/object-oriented-testing-in-python/)
+- Suppressing pytest warnings: [Stack Overflow](https://stackoverflow.com/questions/40710094/how-to-suppress-py-test-internal-deprecation-warnings)
+
+### 6.5 CI/CD Workflow - Automated Deployment Process
+
+When we make changes on the app service, we certainly need to re-deploy it to the cloud environment with a newer version for application improvement. But, we don't want to do it manually every time, especially on production environment, which can cause error-prone and time-consuming processes. So, this come to the important of automating the deployment process or CI/CD Workflow. CI/CD Pipeline make sure your developed application is well-maintained, qualified with tests, and deploy securely in predictable way without error-prone issue.
 
 ![cicd-workflow-trigger-example](./docs/cicd-workflow-trigger-example.png)
 
@@ -1181,15 +1250,11 @@ runs-on: ubuntu-latest
 Related Files:
 - [.github/workflows/build-deploy-model.yml](./.github/workflows/build-deploy-model.yml) : CD Workflow
 - [.github/workflows/pull-request-ci.yml](./.github/workflows/pull-request-ci.yml) : CI Workflow
-    - References:
-        - OOP pytest: [Object oriented testing in Python - geeksforgeeks](https://www.geeksforgeeks.org/object-oriented-testing-in-python/)
-        - Multiple test cases with pytest - parametrize: [How to parametrize fixtures and test functions](https://docs.pytest.org/en/stable/how-to/parametrize.html)
-        - Suppressing pytest warnings: [Stack Overflow](https://stackoverflow.com/questions/40710094/how-to-suppress-py-test-internal-deprecation-warnings)
-        - Python Linter: [The Ruff Linter - Ruff Official](https://docs.astral.sh/ruff/linter/)
-        - Ruff Configuration: [Configuring Ruff - Ruff Official](https://docs.astral.sh/ruff/configuration/)
-        - CI Workflow - Pull Request Event Trigger: [Events that trigger workflows - GitHub Official](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request)
 
-#### Github Actions - Secrets Variable and Authentication
+Reference:
+- CI Workflow - Pull Request Event Trigger: [Events that trigger workflows - GitHub Official](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request)
+
+#### 6.5.1 Github Actions - Secrets Variable and Authentication
 
 The most important aspect for *Continuous Deployment (CD)* Workflow is authentication, because we need to make some changes to cloud resources. Traditionally, using long-lived credentials just like password through ***GHA secrets variables*** is the most typical and straightforward solution.
 - You have to get a credential file and copy its contents
@@ -1302,7 +1367,7 @@ However, there's some constraints for WIF that's worth mentioning
 - How to use `assertion.full`: [Stack Overflow](https://stackoverflow.com/a/76451745)
 - Another example of `assertion.full`: [Stack Overflow](https://stackoverflow.com/questions/72752410/attribute-mappings-in-configuring-workload-identity-federation-between-gcp-and-g)
 
-#### Workload Identity Federation Debugging
+#### 6.5.2 Workload Identity Federation Debugging
 ```
 # Error: 1
 
@@ -1347,24 +1412,41 @@ Finally, you can now manual trigger workflow for automated deployment (CD Workfl
 
 For more resource for deployment overview, I recommended this [ML Deployment Chapter](https://github.com/alexeygrigorev/mlbookcamp-code/tree/master/course-zoomcamp/05-deployment) from [*Machine Learning Zoomcamp*](https://github.com/alexeygrigorev/mlbookcamp-code/tree/master).
 
+### 6.6 ML Service Integration Test
+
+![integration-test](./docs/integration-test.png)
+
+To test the deployed image or ML service, we can use airfow to schedule it as a job. But to use it in airflow, we can utilize `GKEPodOperator` which is required K8s cluster or `DockerOperator` for more lightweight approach.
+
+Everything is explained in the image above, but I think setting up this at first-run is quite harder than it's seemed, especially when there's an operator that is not popular among the communities and not well-documented from official provider.
+
+Keys are about:
+- auto-authentication using GCP ADC requiring airflow entrypoint that's explained in *2.2.3 GCP ADC for Pipeline Code* and *2.1.4 Airflow Entrypoint* 
+- how to configure `DockerOperator` parameters, like mounting `docker.sock` or ADC and make the service to be able to communicate with cloud.
+
+References:
+- [`docker.sock` is required to be mounted to airflow scheduler to activate `DockerOperator` - docker-airflow GitHub](https://github.com/puckel/docker-airflow/issues/543)
+- [Simple DockerOperator parameters configuration - Stack Overflow](https://stackoverflow.com/questions/61640090/apache-airflow-how-to-run-a-docker-operator-with-environment-variables-from-ano)
+- [Example 1 of how to use `Mount` parameter in `DockerOperator` - Stack Overflow](https://stackoverflow.com/a/68457890)
+- [Example 2 of how to use `Mount` parameter in `DockerOperator` - Stack Overflow](https://stackoverflow.com/a/73109627)
+
 ## 7. Conclusion
 
 From this project, we learned how to:
-- **Design data architecture, and select tools for each process** to be used in the project.
-- **Set up environment for virtualization** to simulate the local environment such as database, and webserver.
-- **Create an ETL pipeline** to extract data from various sources, transform the data, and load the data to the target database.
-- **Utilize cloud services** to extend the datalake, data warehouse to production.
-- **Create a dashboard** to visualize the data and analyze the business.
-- **Develop machine learning models** to predict the future sales, customer segments, and inferencing customer buying behavior.
+- **Design Data Architecture**, and select tools for each process to be used in the project.
+- **Set up Environment for Virtualization** to simulate the local environment such as database, and webserver.
+- **Create ETL Pipelines** to extract data from various sources, transform the data, and load the data to the target database.
+- **Utilize Cloud Services** to enable Data Lake, Data Warehouse, Image Repository, and etc on cloud.
+- **Learn more on Advanced Cloud Authentication** with low security-risk.
+- **Create a Dashboard** to visualize the data and analyze the business.
+- **Develop Machine Learning Models** to predict the future sales, customer segments, and inferencing customer buying behavior.
 - **Productionize Machine Learning Code/Pipeline** to cloud environment as a microservice either manual process or CI/CD Pipeline with keyless authentication. 
 
-This is the biggest personal project I've ever done so far, and I learned a lot from it. I hope it can be useful for anyone who shares the same learning path. Although this project is not fully finished yet, but I will keep working on it and update it continuously as my knowledge and experience grow.
+This is the biggest personal project I've ever done so far, and I learned a lot from it. I hope it can be useful for anyone who shares the same learning path.
 
 ***Thank you for your reading, happy learning.***
 
----
-*What's coming next?*
+## 8. Appendix
 
-- Recommendation System, Churn prediction Model, and Price Analysis.
+There's relevant topic that I first intended to extend from this project, *Web Scraping*. However, the scope of this project is too huge to elaborate on the topic, but you can check the concept and the old written code in [web-scraping](https://github.com/patcha-ranat/Ecommerce-Invoice-End-to-end/tree/master/web-scraping) folder.
 
----
