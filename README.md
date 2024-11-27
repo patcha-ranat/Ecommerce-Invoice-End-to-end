@@ -1440,7 +1440,7 @@ From this project, we learned how to:
 - **Learn more on Advanced Cloud Authentication** with low security-risk.
 - **Create a Dashboard** to visualize the data and analyze the business.
 - **Develop Machine Learning Models** to predict the future sales, customer segments, and inferencing customer buying behavior.
-- **Productionize Machine Learning Code/Pipeline** to cloud environment as a microservice either manual process or CI/CD Pipeline with keyless authentication. 
+- **Productionize Machine Learning Code/Pipeline** to cloud environment as an image through both manual process and CI/CD Pipeline with keyless authentication.
 
 This is the biggest personal project I've ever done so far, and I learned a lot from it. I hope it can be useful for anyone who shares the same learning path.
 
