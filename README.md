@@ -1,8 +1,13 @@
 # End-to-end E-commerce Data Project - AI-Driven Interpretable Dynamic Customer Segmentation
+
 *Patcharanat P.*
+
+*If you use or adapt this project, please credit and link to the original. Thank you!*
+
 ```text
 Click "⋮≡" at top right to show the table of contents.
 ```
+
 **End-to-end Data project** in the e-commerce and retail industries covering the full process of data exploitation, including Data Engineering, Data Science, Data Analytic, and how to automate ML deployment (MLOps).
 
 ## **Context**
