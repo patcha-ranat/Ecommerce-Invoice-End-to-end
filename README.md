@@ -15,7 +15,7 @@ Click "⋮≡" at top right to show the table of contents.
 It's crucial in nowadays to emphasize data existing and make the most use of it. **The project was created to practice and demonstrate the full process of data exploitation** covering setting up local environments, cloud infrastructure, ETL pipelines, Data Visualization, Machine Learning Model Development, and Model Deployment using E-commerce data.
 
 ## **Table of Contents**:
-*(latest revised: July 2023, Aug 2023, Oct 2024, 14 Nov 2024, 25 Nov 2024)*
+*(latest revised: July 2023, Aug 2023, Oct 2024, 14 Nov 2024, 25 Nov 2024, 15 Dec 2024)*
 1. [Setting up Local Environment](#1-setting-up-local-environment)
     - 1.1 [Setting up Overall Services (containers)](#11-setting-up-overall-services-containers)
     - 1.2 [Checking Docker Results](#12-checking-docker-results)
@@ -158,11 +158,9 @@ docker compose up --build
 # delete all local docker images via Docker UI
 ```
 
-Since the pipelines might be needed to be run in different environment not just on local machine, it's essential to make sure that your code can be packaged and run in anywhere or be able to orchestrated by different tools such as *Kubernetes* for further scaling up. Developing and testing your code to perform ETL/ELT processes in a **Docker** container is essential. And with **Docker Compose**, it make it more convenience to orchestrate multiple containers, in which most of time are built by different images, with a lightweight approach. 
+Since the pipelines might be needed to be run in different environment not just on local machine, it's essential to make sure that your code can be packaged and run in anywhere or be able to orchestrated by different tools such as *Kubernetes* for further scaling up. So, developing and testing your code to perform ETL/ELT processes in a **Docker** container is essential. And with **Docker Compose**, it make it more convenience to orchestrate multiple containers, in which most of time are built by different images, with a lightweight approach.
 
 Usually, we don't use docker compose in production, but it is lightweight and easy enough to allow you to run and test your code on local machine. However, packaging your code as a docker images is still the way to go for production scale pipeline, specifically for *Kubernetes* as an example.
-
-***Warnings: For this Repo. Don't deploy your images created from docker-compose to public***
 
 ### 1.1 Setting up Overall Services (containers)
 
@@ -172,8 +170,8 @@ From **"Setting Up Local Environment Overview"** image,
 1. Docker compose will copy raw data [data/uncleaned.csv](./data/uncleaned_data.csv), and [setup.sql](./setup.sql) to source postgres database container to mockup data source as DBMS. With the `setup.sql` as an entrypoint of the container, source postgres db will initiate table and load data into in. All the execution steps defined in [postgres.Dockerfile](./postgres.Dockerfile)
 2. Docker compose will copy [target.sql](./target.sql) to target postgres database container to mockup target database as DBMS. With the *target.sql* as an entrypoint of the container, target postgres db will initiate empty table waiting for ETL processes. All the execution steps defined in [postgres-target.Dockerfile](./postgres-target.Dockerfile)
 3. Docker compose will do the following:
-    1. Mount Volume of credentials (GCP-ADC, AWS, and Kaggle) to airflow scheduler and webserver containers. And it also mount necessary components for airflow such as `logs` folder, [src/config/variables.json](./src/config/variables-masked.json), and [src/config/connections.json](./src/config/connections.json) which will be clarified more on Topic 2: *Setting up Cloud Infrastructure and Authentication*
-    2. Mount [airflow-entrypoint.sh](./airflow-entrypoint.sh) to airflow scheduler and webserver containers and use it as entrypoint to import  mounted [variables.json](./src/config/variables-masked.json) and [](./src/config/connections.json) in runtime at first start. The step that related to authentication also will be explained in Topic 2.
+    1. Mount Volume of credentials (GCP-ADC, AWS, and Kaggle) to airflow scheduler and webserver containers. And it also mount necessary components for airflow such as `logs` folder, [src/config/variables.json](./src/config/variables-masked.json), and [src/config/connections.json](./src/config/connections.json) which will be clarified more on Topic [*2.1.3 Setting up Airflow Connections and Variables*](#213-setting-up-airflow-connections-and-variables)
+    2. Mount [airflow-entrypoint.sh](./airflow-entrypoint.sh) to airflow scheduler and webserver containers and use it as entrypoint to import  mounted [variables.json](./src/config/variables-masked.json) and [connections.json](./src/config/connections.json) at runtime when first start. The step that related to authentication also will be explained in Topic [*2.1.4 Airflow Entrypoint*](#214-airflow-entrypoint).
     3. Use [airflow.properties](./airflow.properties) to configure Airflow Containers' environment variables (act as `.env` file in airflow containers)
     4. install airflow python dependencies specified in [requirements.txt](./requirements.txt) executed by [airflow.Dockerfile](./airflow.Dockerfile). Setting up gcloud also will be explained in Topic 2.
      
@@ -191,7 +189,7 @@ In airflow official site, you will find [`docker-compose.yml`](https://airflow.a
 
 ![docker-ps](./docs/docker-ps.png)
 
-What's needed to be checked are
+What needed to be checked are
 - Are the files are mounted/copied to target path correctly?
     - `kaggle.json`
     - `ecomm-invoice-kde-aws-iam_accessKeys.csv`
@@ -301,7 +299,7 @@ To me, This part is quite complex compared with other topic considered by securi
 
 ### 2.1.1 Setting up IAM and Service Account
 
-Actually, it's available to retrieve ***Service Account (SA)*** with accesses via `gcloud` CLI or ***Terraform***, but I'd prefer to do this approach to reduce complexity for utilizing SA in further steps. So, we don't have to switch account email back and forth.
+Actually, it's available to retrieve ***Service Account (SA)*** with accesses via `gcloud` CLI or ***Terraform***, but I'd prefer to create it via GCP console (Web UI) manually to reduce complexity for utilizing SA in further steps. So, we don't have to switch account email back and forth.
 
 Please, follow this guideline:
 1. Go to your GCP project console with available access to manage cloud resources, and go to navigation menu, then go to `IAM & Admin` > `Service Accounts` > `Create Service Account` > Create your SA and keep the email.
@@ -333,7 +331,7 @@ gcloud auth application-default login --impersonate-service-account <your-servic
 After we have proper permissions for the SA, we have to configure airflow to allow it authenticating with cloud through code. There's multiple ways to do it, like by configuring ADC, Secret as URI, or specifying long-lived credentials path. In this project, I will use the ADC method which will be elaborated on Topic 2.2.1: *Long-lived credentials method vs others*.
 - In many tutorials, you may find instructor to tell you how to configure airflow connections on Airflow Web UI, but in reality, we should keep it as code for versioning and reducing manual process as much as possible. this can be done by using *pre-defined connections* [connections.json](./src/config/connections.json)
 - Airflow Variables also operate in the same behavior to allow the code act differently between different stage of environments (dev/stg/prod) by specifying different variables for each stage. [variables.json](./src/config/variables-masked.json)
-- You can import connections and variables during airflow runtime by:
+- You can import/update connections and variables during airflow runtime by:
     ```bash
     docker exec -it <airflow-scheduler-container-name> bash
 
@@ -345,6 +343,7 @@ After we have proper permissions for the SA, we have to configure airflow to all
     # airflow variables export config/variables-export.json
     # airflow connections import config/connections-export.json
     ```
+    - But as mentioned before in Topic [1.1](#11-setting-up-overall-services-containers), it's already executed first time when containers start by `airflow-entrypoint.sh`, but we can execute these commands to update connections and variables at runtime.
 
 ![airflow-connections](./docs/airflow-connections.png)
 ![airflow-variables](./docs/airflow-variables.png)
@@ -377,8 +376,8 @@ Here's some additional information of my old written guideline to configure **po
 However, importing airflow connections and variables through CLI is still a manual process and we don't expect this steps in production. So, using airflow entrypoint become important. [airflow-entrypoint.sh](./airflow-entrypoint.sh) is specified in `docker-compose.yml` file in `entrypoint` section to be executed everytime when airflow containers created and started. `airflow-entrypoint.sh` is defined with many steps including importing conenctions and variables, authenticating with gcloud using ADC, and the last line is defined according to airflow official site to continue airflow default entrypoint.
 
 **Note:**
-- gcloud authentication line is very important to make the container being able to pull docker image from the private repository (GAR). After the entrypoint executed, the container will contains sensitive information from using ADC to `print-access-token` into `~/.docker/config.json`. This line of code is equal to `gcloud auth configure-docker <region>...`.
-- However, this process do not make airflow image become sensitive, because we did not copy ADC file to docker image directly, instead we use mounting volume. This sensitive information will be contained only in container and after entrypoint is executed, not in image. Without proper setting up mounting part, the airflow image wouldn't operate properly.
+- gcloud authentication line is very important to make the container be able to pull docker image from the private repository (GAR). After the entrypoint executed, the container will contains sensitive information from using ADC to `print-access-token` into `~/.docker/config.json`. This line of code is equal to `gcloud auth configure-docker <region>...`.
+- However, this process do not make airflow image become sensitive, because we did not copy ADC file to docker image directly, instead we use mounting volume. This sensitive information will be contained only in container and after entrypoint is executed, not in image. Without proper setting up mounting part, the airflow container wouldn't operate properly.
 
 #### Entrypoint Debugging:
 ```
@@ -401,7 +400,7 @@ References:
 ### 2.2.1 Long-lived credentials method vs Others
 
 - In fact, the most easiest way to interact with cloud services through code is to use long-lived tokens or credentials, but it's also the least safest way to authenticate to cloud provider considering existing of secret files.
-- Mostly in the Airflow Operator code provided by official provider, there're always parameters that you can indicate where your credentials can be read from regarding to where the code is running on. So, you can pack your credentials together with the code to make cloud enabling available.
+- Mostly in the Airflow Operator code provided by official provider, there're always parameters that you can indicate where your credentials can be read from regarding to where the code is running on. So, you can pack your credentials together with the code to make your code be able to interact with cloud.
 - Even though, there's a risk that anyone in the team can accidentially expose this secret file to public by pushing code to public GitHub repo or pushing image containing credentials footprint to public registry.
 - So, there're gradually emerging of new ways to authenticate with cloud such as using ***Application Default Credentials (ADC)*** or **Workload Identity Federation (WIF)** provided by GCP dedicatedly intended to remove existing of secret files existence.
 - We will use ADC for GCP, and long-lived credentials for AWS in this project for the code. But we will use WIF for CI/CD pipeline.
@@ -623,25 +622,31 @@ External tables are suitable when you want to query data without loading it into
     - External table makes ELT process easier to be implemented reducing the gap between data lake and data warehouse, but still can be benefited from partitioning by ***Hive-style Partitioning*** 
     - Actually, Parquet files embed data schema into the files. We can use some operators that support referring parquet internal schema to create external tables in data warehouse. So, we don't have to pre-define schema for every tables, except within an stardardized data processing framework.
     - Transformer from *Bronze* layer to *Silver* layer can be a custom framework that stardardizes data format and follows company's data governance. There's multiple relevant libraries can be mentioned here, such as ***pyspark***, ***dlt***, and etc. depended on data sources, acceptable cost, and team expertise in tools.
-    - There're also multiple tools that support transforming data from *Silver* layer to *Gold* layer such as ***dbt***, ***SQL Mesh***, and etc. or even native airflow operator. Such tools give ability to visualize transformation logic and enable data lineage, native integrated data dict for a better maintainance.
-        - Many companies discourage the use of these tools giving the reason that it's not appropriate for big scale projects and too messy to maintain. However, I disagree this because there're practices and principles that solve this problem, like ***Data Mesh*** *(twisted from Domain-driven design: DDD)* and ***Modularity***. 
-        - Anyway, it requires highly skilled data archietct and data engineer to develop and maintain these tools along with the priciples. So, they might not be able to focus this enough since it can be quite a low-level foundation and very far from a product that's seemed to be more profitable to the company.
+    - There're also multiple tools that support transforming data from *Silver* layer to *Gold* layer such as ***dbt***, ***SQL Mesh***, and etc. or even native airflow operator. Such tools give ability to visualize transformation logic and enable data lineage, native integrated data dict for a better maintenance.
+        - Many companies discourage the use of these tools giving the reason that it's not appropriate for big scale projects and too messy to maintain. However, I disagree this because there're practices and principles that can solve this problem, like ***Data Mesh*** *(twisted from Domain-driven design: DDD)* and ***Modularity***. 
+        - Anyway, it requires highly skilled data archietct and data engineer together to develop and maintain these tools along with the principles. I thought they were not being able to focus on this low-level foundation enough so they said it's a mess, because it can be very far from final products that seems to be more profitable to the company.
 
 ### 3.2 Data Modeling and Optimization in Production
+
 This topic is quite important, since it can be highly involved in cost optimization.
 - Although *ingestion* process is completed, we might need to transformed it, besides of raw cleaned and normalized data, with custom business logic, and tables aggregation to further analyze and exploit more from data.
 - This process usually referred to *ELT* or *transformation* that is not the same *transformation* in ingestion process, which is just controling data quality by casting type, formatting date/timestamp or mapping data into specified schema by a framework.
-- Transformed data models can be located in *curate* or *gold* layer in *medallion architecture*, but sometimes can be in *semantic layer* which is referred to another transformation sub-layer before being shown on dashboard. However, this depends on companies' data archietcture and agreement between teams.
+- Transformed data models can be located in *curate* or *gold* layer in *medallion architecture*, but sometimes can be in *semantic layer* which is referred to another transformation sub-layer before being shown on dashboard. However, this also depends on companies' data archietcture and agreement between teams.
 ![semantic-concept](./docs/semantic-concept.jpg)
-- Transformation process can be done with SQL by analytic engineer, data analyst, domain expert, and etc. to make data become more meaningful to business aspect. However without proper expertise in SQL and data modeling, cost from dashboard usage and data preparation can be gone in a very wrong way.
-- Tools that support transformation at aggregation level is emerging, since ELT pattern is still counted as modern at the moment for batch data engineering pipeline. Some of famous tools you might have heard could be *dbt*, and *SQLMesh* which enable ability to perform complex incremental data loading logic, SCD handling, data lineage, data dict, and built-in data quality controlling at high level. However, you could still implement data aggregation with native airflow operator introduced by official provider by executing sql directly to data warehouse through Airflow.
+- Transformation process can be done with SQL by analytic engineer, data analyst, domain expert, etc. or data engineer if necessary to make data become more meaningful to business aspect. However, without proper expertise in SQL and data modeling, cost from dashboard usage and data preparation can be gone in a very wrong way.
+- Tools that support transformation at aggregation level is emerging, since ELT pattern is still counted as modern at the moment for batch data engineering pipeline. Some of famous tools you might have heard could be *dbt*, and *SQLMesh* which enable ability to perform complex incremental data loading logic, SCD handling, data lineage, data dict, and offer built-in data quality controlling at high level. However, you could still implement traditional data aggregation with native airflow operator introduced by official provider by executing sql directly to data warehouse through Airflow.
+- What should be considered in gold layer for technical aspects are:
+    - SCD (Slow Changing Dimension) handling
+    - snapshot and incremental transformation (which usually involved with how ingestion pipelines work and silver layer partitioning)
+    - data transferring behavior or ingestion method (full dump, append, delta, or replace)
+    - business logic (if semantic layer does not exist or it required pre-calculation in gold layer)
 
 #### 3.3 How to Optimize Data Models
-- What should be considered in gold layer (or curated) is technical aspects such as, SCD (Slow Changing Dimension), snapshot and incremental transformation (which usually involved with how ingestion pipelines work and silver layer partitioning), data transferring behavior or ingestion method (full dump, append, delta, or replace), and business logic (if semantic layer not exists or it required pre-calculation in gold layer)
-- **Pre-calculated table was proved to be more optimized when data is queried to dashboard. Moreover, data aggregation with only necessary partitioning considered also important in cost optimization when it come to larger scale in production database.**
-- Using view not only prevent downstream users from modifying table in ideal, but also manipulate the users to query from only specific period of data or partition resulting in lesser data scanning per read or per dashboard refresh.
-    - Using view can futher lead to *data governance* issues such as user permission to read from both table and view if not considering dashboard permission. 
-- Modeling data warehouse to *star schema* or *snowflake schema* (considered to be fact/dimension pattern) is claimed multiple times to be more cost optimized, but it lack of quantitative evidence.
+
+- Pre-calculated table (native table on gold layer) was proved to be more optimized when data is queried to dashboard compared with using view considered by both cost and time performance, because it don't have to scan component tables for aggregation multiple times to repeatedly create the same business-goal table, and the native table is claimed to be more optimized in time performance compared with view.
+- Using view not only prevent downstream users from modifying table in ideal, but also manipulate the users to query from only necessary or specific partitions or columns resulting in lesser data scanning per read or per dashboard refresh which is important in cost optimization to reduce cost from unnecessary scanning when it come to larger scale in production database.
+    - Using view can futher lead to *data governance* issues such as user permission to read from both table and view besides from dashboard permission.
+- Modeling data warehouse to *star schema* or *snowflake schema* (considered to be fact/dimension pattern) is claimed multiple times to be more cost optimized, but it lacks of quantitative evidence.
 
 ## 4. EDA and Data Visualization
 
