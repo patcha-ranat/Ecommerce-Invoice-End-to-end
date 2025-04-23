@@ -8,6 +8,8 @@ postgres-db-volume
 *.exe
 .ipynb_checkpoints
 __pycache__
+.ruff_cache
+.pytest_cache
 
 # credentials
 kaggle.json
@@ -20,7 +22,7 @@ data.json
 
 # scripts
 test.py
-# *.ipynb
+test.ipynb
 
 # infrastructure
 .terraform*
@@ -43,6 +45,8 @@ pyenv
 output/artifact
 output/models
 _process.sh
+kde_pyspark_ingestion_framework.egg-info
+test_output
 
 # etc
 *.pdf

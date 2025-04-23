@@ -15,6 +15,7 @@ Click "⋮≡" at top right to show the table of contents.
 It's crucial in nowadays to emphasize data existing and make the most use of it. **The project was created to practice and demonstrate the full process of data exploitation** covering setting up local environments, cloud infrastructure, ETL pipelines, Data Visualization, Machine Learning Model Development, and Model Deployment using E-commerce data.
 
 ## **Table of Contents**:
+
 *(latest revised: July 2023, Aug 2023, Oct 2024, 14 Nov 2024, 25 Nov 2024, 15 Dec 2024)*
 1. [Setting up Local Environment](#1-setting-up-local-environment)
     - 1.1 [Setting up Overall Services (containers)](#11-setting-up-overall-services-containers)
@@ -64,6 +65,7 @@ It's crucial in nowadays to emphasize data existing and make the most use of it.
 Dataset: [E-Commerce Data - Kaggle](https://www.kaggle.com/datasets/carrie1/ecommerce-data)
 
 ## Prerequisites:
+
 - Python
 - Docker Desktop
 - Terraform (+Add to `$PATH`)
@@ -348,7 +350,8 @@ After we have proper permissions for the SA, we have to configure airflow to all
 ![airflow-connections](./docs/airflow-connections.png)
 ![airflow-variables](./docs/airflow-variables.png)
 
-**Note:**
+#### **Note:**
+
 - Path of `config/variables.json` and `config/connections.json` depends on mounted path from local machine or path we specified to copied it to in `Dockerfile`
 - If you used copying approach through `Dockerfile`, please note that the image would contain files that contain sensitive information, especially in `connections.json`, and can be dangerous to leak to public.
 - `google_cloud_default` is leave blank to use conenction from ADC, this method was explained by Airflow Official in reference link below.
@@ -375,7 +378,8 @@ Here's some additional information of my old written guideline to configure **po
 
 However, importing airflow connections and variables through CLI is still a manual process and we don't expect this steps in production. So, using airflow entrypoint become important. [airflow-entrypoint.sh](./airflow-entrypoint.sh) is specified in `docker-compose.yml` file in `entrypoint` section to be executed everytime when airflow containers created and started. `airflow-entrypoint.sh` is defined with many steps including importing conenctions and variables, authenticating with gcloud using ADC, and the last line is defined according to airflow official site to continue airflow default entrypoint.
 
-**Note:**
+#### **Note:**
+
 - gcloud authentication line is very important to make the container be able to pull docker image from the private repository (GAR). After the entrypoint executed, the container will contains sensitive information from using ADC to `print-access-token` into `~/.docker/config.json`. This line of code is equal to `gcloud auth configure-docker <region>...`.
 - However, this process do not make airflow image become sensitive, because we did not copy ADC file to docker image directly, instead we use mounting volume. This sensitive information will be contained only in container and after entrypoint is executed, not in image. Without proper setting up mounting part, the airflow container wouldn't operate properly.
 
@@ -486,7 +490,7 @@ Fow AWS, we will use **S3** as a data lake, and AWS **Redshift** as a data wareh
 
 We will create an IAM user, and get the credentials file manually via Web IU. Access for AWS is quite more complex than GCP, composed of IAM user, IAM Role, and Policy which will not be described in detail in this project.
 
-**IAM User and Policies**
+#### **IAM User and Policies**
 
 To get the IAM user, we must have root user which is the first user we created when we created AWS account. Then,
 - We need to go to `IAM` service in AWS console.
@@ -957,6 +961,7 @@ First, we will focus on extracting the model development processes from notebook
     - [df_cluster_importance.parquet](./code/models/output/data/2024-11-08/df_cluster_importance.parquet)
 
 #### Related Files
+
 - [code/models/main.py](./code/models/main.py) : entrypoint of the application using argparse
 - [code/models/abstract.py](./code/models/abstract.py) : abstract classes defining overview of implemented classes
 - [code/models/io_services.py](./code/models/io_services.py) : Input and Output related services (reader/wrtier)
@@ -1092,16 +1097,14 @@ If below error occurred, please check if you have the '**Service Account Token C
     "message": "Permission 'iam.serviceAccounts.getAccessToken' denied on resource (or it may not exist).",
     "status": "PERMISSION_DENIED",
     "details": [
-      {
-        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
-        "reason": "IAM_PERMISSION_DENIED",
-        "domain": "iam.googleapis.com",
-        "metadata": {
-          "permission": "iam.serviceAccounts.getAccessToken"
+        {
+            "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+            "reason": "IAM_PERMISSION_DENIED",
+            "domain": "iam.googleapis.com",
+            "metadata": {
+            "permission": "iam.serviceAccounts.getAccessToken"
         }
-      }
     ]
-  }
 }
 ```
 
@@ -1115,6 +1118,7 @@ References:
     - [Authentication for Terraform - Google Cloud Platform](https://cloud.google.com/docs/terraform/authentication)
 
 #### 2. Build the Docker image locally and push it to the Artifact Registry
+
 To puslish created docker image to GAR, please run the following commands:
 ```bash
 # workdir: code/models/
@@ -1175,7 +1179,8 @@ pre-commit install
 pre-commit uninstall
 ```
 
-**Note:**
+#### **Note:**
+
 - Pre-commit will only apply on the files that are committed or staged changes, and if you specified additional conditions, like only specific path to be checked with through pre-commit, it will comply with it also.
 - Please note that pre-commit in this project is configured to only check linting in `code/models/` path.
 - Pre-commit also supported other languages with various types of hook.
@@ -1378,6 +1383,7 @@ However, there's some constraints for WIF that's worth mentioning
 - Another example of `assertion.full`: [Stack Overflow](https://stackoverflow.com/questions/72752410/attribute-mappings-in-configuring-workload-identity-federation-between-gcp-and-g)
 
 #### 6.5.2 Workload Identity Federation Debugging
+
 ```
 # Error: 1
 
