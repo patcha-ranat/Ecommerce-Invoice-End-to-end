@@ -1,0 +1,28 @@
+[project]
+name = "kde-ecomm"
+version = "1.0.0"
+description = ""
+authors = [
+    {name = "ken-patcharanat",email = "patcha-ranat@outlook.com"}
+]
+requires-python = ">=3.9,<3.13"
+dependencies = [
+    "psycopg2-binary==2.9.10", # airflow postgres db backend
+    "apache-airflow==2.10.4", # airflow dependency
+    "apache-airflow-providers-google==15.1.0", # airflow dependency
+    "apache-airflow-providers-docker==3.10.0" # airflow dependency
+]
+
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+pyspark = "3.4.0" # ingestion framework local test
+ipykernel = "6.29.5" # using poetry with python notebook in vscode
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -41,25 +41,14 @@ class InputService(AbstractInputService):
 
     def read_data(self) -> None:
         """
-        Reading Data with Configuration
+        Reading Data with Configuration, regardless type of filesystem (local, gcp, aws) which is managed in dependency level. 
         """
-        if "gs://" in self.input_path:
-            self.logger.info("Reading data from GCS")
-            df = None
-            pass
-
-        elif "s3://" in self.input_path:
-            self.logger.info("Reading data from S3")
-            df = None
-            pass
+        self.logger.debug(f"Reading data from '{self.input_path}'")
+        df = self.spark.read\
+            .schema(self.config_instance.source_schema)\
+            .format(self.read_format)\
+            .load(self.input_path)
         
-        else: # Local filesystem
-            self.logger.debug("Reading data from Local filesystem, this is for testing.")
-            df = self.spark.read\
-                .schema(self.config_instance.source_schema)\
-                .format(self.read_format)\
-                .load(self.input_path)
-            
         self.df = df
 
     def process(self):

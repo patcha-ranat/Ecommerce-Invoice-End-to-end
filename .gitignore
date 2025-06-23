@@ -23,6 +23,7 @@ data.json
 # scripts
 test.py
 test.ipynb
+test.sh
 
 # infrastructure
 .terraform*
