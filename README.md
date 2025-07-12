@@ -1547,6 +1547,7 @@ There's relevant topic that I first intended to extend from this project, *Web S
 - Airflow
     - [How to use `.airflowignore` - Stack Overflow](https://stackoverflow.com/a/53686092)
     - [`airflow db init` vs `airflow db migrate` - Stack Overflow](https://stackoverflow.com/a/79340501)
+    - [Dynamic DAG Generator - Astronomer](https://www.astronomer.io/docs/learn/dynamically-generating-dags/)
 - Poetry
     - [`poetry lock` vs `poetry update` - Stack Overflow](https://stackoverflow.com/questions/65883059/what-is-the-difference-between-poetry-lock-and-poetry-update-lock)
     - [Poetry No File/Folder for Package (`package-mode = false`) Troubleshoot - Stack Overflow](https://stackoverflow.com/questions/75445290/poetry-no-file-folder-for-package)
@@ -1568,4 +1569,8 @@ There's relevant topic that I first intended to extend from this project, *Web S
     - [Cloud Storage connector - Connector setup on non-Dataproc clusters](https://cloud.google.com/dataproc/docs/concepts/connectors/cloud-storage#clusters)
     - [hadoop-connectors (GCS connector jars) - GitHub GoogleCloudDataProc](https://github.com/GoogleCloudDataproc/hadoop-connectors/releases)
     - [Dataproc operation failure: INVALID_ARGUMENT: User not authorized to act as service account - Stack Overflow](https://stackoverflow.com/questions/63222520/dataproc-operation-failure-invalid-argument-user-not-authorized-to-act-as-serv)
+    - [Google Cloud Dataproc Operator - Airflow Official Documentation](https://airflow.apache.org/docs/apache-airflow-providers-google/stable/operators/cloud/dataproc.html#submit-a-job-to-a-cluster)
+    - [PySpark Job Config for Dataproc - GCP](https://cloud.google.com/dataproc/docs/reference/rest/v1/PySparkJob)
+    - [Cluster Config for Dataproc - GCP](https://cloud.google.com/dataproc/docs/reference/rest/v1/ClusterConfig)
+    - [REST Resource for Dataproc Config - GCP](https://cloud.google.com/dataproc/docs/reference/rest/v1/projects.regions.jobs)
 - [How to add 'zip' manually to "git bash" installation on Windows (used in packaging code to a zip file for dataproc) - Stack Overflow](https://stackoverflow.com/a/55749636)
